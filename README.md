@@ -39,7 +39,7 @@ cd client && cp .env.example .env && npm install && npm run dev                 
 
 `npm run seed` **wipes the database** and loads demo data: an admin, two faculty mentors, seven students (all on `ALLOWED_EMAIL_DOMAIN`), three published projects and one waiting in the mentor queue. Logins are printed at the end of the seed. Run server unit tests with `cd server && npm test`.
 
-Details and deployment: [docs/STARTER.md](docs/STARTER.md).
+Details: [docs/STARTER.md](docs/STARTER.md). **Deploying (Netlify + Railway + Atlas + S3): [docs/DEPLOY.md](docs/DEPLOY.md).**
 
 ## P0 at a glance
 
