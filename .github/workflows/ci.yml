@@ -20,6 +20,7 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
       - run: node --check server.js
+      - run: npm test            # unit tests: skip rules, secret scan, stack, commit mapping
 
   client:
     runs-on: ubuntu-latest

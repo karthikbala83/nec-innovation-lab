@@ -23,7 +23,7 @@ Full product spec: **[docs/PORTAL_SPEC.md](docs/PORTAL_SPEC.md)**
 
 | Path | What it is |
 |---|---|
-| `server/`, `client/` | MERN base: own JWT auth, protected routes, MongoDB aggregation examples, admin dashboard. The portal is built on top of this. |
+| `server/`, `client/` | MERN app: own JWT auth + the P0 portal in feature folders (`projects/`, `feed/`, `review/`, `profiles/`). The starter's `notes` demo is kept for teaching. |
 | `docs/PORTAL_SPEC.md` | What we are building, phases P0–P3 |
 | `docs/STARTER.md` | How the base app works, run locally, **deploy on free tiers** (Atlas + Render + Vercel) |
 | `docs/git-merge-lab.html` | Animated Git lesson: branch, merge, resolve a conflict — open in any browser |
@@ -37,7 +37,22 @@ cd server && cp .env.example .env && npm install && npm run seed && npm run dev 
 cd client && cp .env.example .env && npm install && npm run dev                   # http://localhost:5173
 ```
 
+`npm run seed` **wipes the database** and loads demo data: an admin, two faculty mentors, seven students (all on `ALLOWED_EMAIL_DOMAIN`), three published projects and one waiting in the mentor queue. Logins are printed at the end of the seed. Run server unit tests with `cd server && npm test`.
+
 Details and deployment: [docs/STARTER.md](docs/STARTER.md).
+
+## P0 at a glance
+
+| Who | Where | What |
+|---|---|---|
+| Anyone | `/` | Feed: New launches / Trending this week, filters, search |
+| Anyone | `/p/<slug>` | Launch page: story, video, team, code panel (stack, languages, commits per week) |
+| Anyone | `/u/<handle>` | Student profile + resume QR. No email, phone or roll number shown |
+| Student | `/projects/new` | 6-step wizard: basics, story, links, team + mentor, GitHub import, submit |
+| Faculty | `/review` | Approval queue. Nothing is public until the mentor approves |
+| Admin | `/admin/people` | Promote faculty, mark students verified |
+
+**GitHub import** (`server/projects/repoImport.js`): public repos only, server token (`GITHUB_TOKEN`), cached for `GITHUB_CACHE_MINUTES`. One tarball download instead of one call per file; skips `node_modules`, builds, lockfiles, binaries and files over 500 KB; scans for committed keys (masked, shown only to the team, mentor and admin); maps commits to members by GitHub username.
 
 ## Roadmap
 
