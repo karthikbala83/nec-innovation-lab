@@ -1,6 +1,7 @@
 // Live dashboard: polls /api/admin/dashboard every 10 seconds.
 // "Active" = a session touched the API within the last 5 minutes.
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/axios';
 
 export default function Admin() {
@@ -18,7 +19,10 @@ export default function Admin() {
 
   return (
     <div>
-      <h2>Admin Dashboard <span className="live-dot" title="auto-refreshes every 10s" /></h2>
+      <div className="row-between">
+        <h2>Admin Dashboard <span className="live-dot" title="auto-refreshes every 10s" /></h2>
+        <span><Link to="/admin/people">People &amp; roles</Link> · <Link to="/review">Approval queue</Link></span>
+      </div>
 
       <div className="stat-grid">
         <div className="stat"><span>{counts.activeNow}</span>Active now</div>

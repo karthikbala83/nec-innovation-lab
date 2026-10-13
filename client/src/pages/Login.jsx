@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
+  const location = useLocation();
   const cardRef = useRef(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +43,7 @@ export default function Login() {
     setError('');
     try {
       await login(email, password);
-      nav('/notes');
+      nav(location.state?.from || '/me/projects');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
       shake();                       // feel the failure, not just read it
