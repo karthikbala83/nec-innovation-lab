@@ -101,18 +101,34 @@ const projectSchema = new mongoose.Schema(
       languages: [String],          // top languages, biggest first
       lastCommitAt: Date,
       commitsLast7d: { type: Number, default: 0 },
+      commitsLast30d: { type: Number, default: 0 },
       totalCommits: { type: Number, default: 0 },
     },
 
-    // ---- Counters (P1 fills backers/followers) & Lab Score placeholder ----
+    // ---- Live URL daily check (jobs/dailyChecks.js) ----
+    live: {
+      checkedAt: Date,
+      ok: Boolean,            // last check: up or down
+      status: Number,         // HTTP status of the last check (0 = no answer)
+      uptime30d: Number,      // 0–100, null until checked
+    },
+
+    // ---- Counters (kept in sync by community/ and the view counter) ----
     counts: {
-      backers: { type: Number, default: 0 },
+      backers: { type: Number, default: 0 },          // college + public "back"s
+      backersCollege: { type: Number, default: 0 },
+      backersPublic: { type: Number, default: 0 },
       followers: { type: Number, default: 0 },
       views: { type: Number, default: 0 },
+      comments: { type: Number, default: 0 },
+      updates: { type: Number, default: 0 },
     },
+
+    // ---- Lab Score 0–100 with every part visible (score/labScore.js) ----
     labScore: {
-      total: { type: Number, default: 0 },
+      total: { type: Number, default: 0, index: true },
       parts: { type: mongoose.Schema.Types.Mixed, default: {} },
+      computedAt: Date,
     },
   },
   { timestamps: true }
@@ -124,7 +140,7 @@ projectSchema.index({ 'members.user': 1 });
 
 // ---- Slug from title, unique: "Smart Irrigation" -> smart-irrigation, smart-irrigation-2 ----
 projectSchema.pre('validate', async function () {
-  if (this.slug) return;
+  if (this.slug || !this.isSelected('slug')) return;   // partial docs (.select()) must not get a new slug
   const base = (this.title || 'project').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 70).padEnd(3, '0');
   let candidate = base;

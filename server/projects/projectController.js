@@ -8,6 +8,7 @@ const RepoSnapshot = require('./RepoSnapshot');
 const MetricDaily = require('../feed/MetricDaily');
 const User = require('../models/User');
 const { importRepo } = require('./repoImport');
+const { recomputeSoon } = require('../score/labScore');
 
 const PUBLIC_USER = User.PUBLIC_FIELDS;
 const NEW_DAYS = 14;
@@ -163,6 +164,7 @@ exports.update = async (req, res) => {
 
   await applyChanges(project, req.body, req.user);
   await project.save();
+  if (project.status === 'published') recomputeSoon(project._id);   // stage, competitions, live URL feed the score
   res.json(project);
 };
 
@@ -202,6 +204,7 @@ exports.importRepo = async (req, res) => {
 
   try {
     const { snapshot, cached } = await importRepo(project, { force: req.query.force === '1' });
+    recomputeSoon(project._id);
     res.json({ cached, snapshot: snapshotForTeam(snapshot) });
   } catch (err) {
     if (err.name !== 'TimeoutError') throw err;

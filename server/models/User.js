@@ -72,7 +72,7 @@ userSchema.statics.isCollegeEmail = function (email) {
 
 // ---- Give every user a public handle from the email local part: arun.k -> arun-k ----
 userSchema.pre('validate', async function () {
-  if (this.handle) return;
+  if (this.handle || !this.isSelected('handle')) return;   // partial docs (.select()) must not get a new handle
   const base = (this.email || 'user').split('@')[0].toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).padEnd(3, '0');
   let candidate = base;

@@ -7,7 +7,8 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "seed": "node utils/seed.js",
-    "test": "node --test"
+    "test": "node --test",
+    "daily": "node jobs/dailyChecks.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -10,6 +10,7 @@ const connectDB = require('./config/db');
 const trackActivity = require('./middleware/trackActivity');
 const errorHandler = require('./middleware/errorHandler');
 const { profiles, users } = require('./profiles/profileRoutes');
+const { startScheduler } = require('./jobs/dailyChecks');
 
 const app = express();
 
@@ -30,6 +31,10 @@ app.use('/api/projects', require('./projects/projectRoutes'));      // mixed: se
 app.use('/api/users', users);                                        // logged in
 app.use('/api/review', trackActivity, require('./review/reviewRoutes'));   // faculty / admin
 
+// ---- P1: startup-portal layer ----
+app.use('/api/leaderboards', require('./leaderboards/leaderboardRoutes'));  // public
+app.use('/api', require('./community/communityRoutes'));                    // back, follow, comments, updates
+
 // ---- 404 + error handler ----
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
 app.use(errorHandler);
@@ -37,6 +42,7 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 if (require.main === module) {
   connectDB();
+  startScheduler();   // daily live checks + Lab Score refresh (JOBS_ENABLED=false to turn off)
   app.listen(PORT, () => console.log(`API listening on port ${PORT}`));
 }
 

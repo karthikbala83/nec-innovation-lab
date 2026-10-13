@@ -213,6 +213,7 @@ const summarise = async (project, snapshot) => {
     languages: langs,
     lastCommitAt: snapshot.commits[0]?.date,
     commitsLast7d: snapshot.commits.filter((c) => new Date(c.date).getTime() >= weekAgo).length,
+    commitsLast30d: snapshot.commits.filter((c) => new Date(c.date).getTime() >= Date.now() - 30 * 864e5).length,
     totalCommits: snapshot.commits.length,
   };
   await project.save();

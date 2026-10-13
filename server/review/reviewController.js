@@ -4,6 +4,7 @@
 // with a note saying what to fix.
 // ---------------------------------------------------------------
 const Project = require('../projects/Project');
+const { recomputeSoon } = require('../score/labScore');
 
 const isReviewer = (project, user) =>
   user.role === 'admin' || String(project.mentor) === String(user._id);
@@ -40,6 +41,7 @@ const decide = (approve) => async (req, res) => {
     note: note || undefined,
   };
   await project.save();
+  if (approve) recomputeSoon(project._id);   // first Lab Score on launch
   res.json(project);
 };
 

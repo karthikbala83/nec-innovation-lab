@@ -1,4 +1,5 @@
-// Run: npm run seed      (WIPES users, sessions, notes, projects, snapshots, metrics)
+// Run: npm run seed      (WIPES users, sessions, notes, projects, snapshots, metrics,
+//                        backings, follows, comments, updates, settings)
 // Creates 1 admin, 2 faculty mentors, 7 students, 3 published demo
 // projects and 1 project waiting in the mentor queue. Repo snapshots
 // are fixtures (no GitHub calls), so seeding works offline.
@@ -10,7 +11,13 @@ const Session = require('../models/Session');
 const Project = require('../projects/Project');
 const RepoSnapshot = require('../projects/RepoSnapshot');
 const MetricDaily = require('../feed/MetricDaily');
+const Backing = require('../community/Backing');
+const Follow = require('../community/Follow');
+const Comment = require('../community/Comment');
+const Update = require('../updates/Update');
+const Setting = require('../settings/Setting');
 const { mapMembers, weeklyCounts, summarise } = require('../projects/repoImport');
+const { recompute } = require('../score/labScore');
 
 const DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'nandhaengg.org').split(',')[0].trim();
 const mail = (local) => `${local}@${DOMAIN}`;
@@ -69,8 +76,10 @@ const run = async () => {
   await Promise.all([
     User.deleteMany(), Note.deleteMany(), Session.deleteMany(),
     Project.deleteMany(), RepoSnapshot.deleteMany(), MetricDaily.deleteMany(),
+    Backing.deleteMany(), Follow.deleteMany(), Comment.deleteMany(), Update.deleteMany(), Setting.deleteMany(),
   ]);
-  await Promise.all([User.syncIndexes(), Project.syncIndexes(), RepoSnapshot.syncIndexes(), MetricDaily.syncIndexes()]);
+  await Promise.all([User, Project, RepoSnapshot, MetricDaily, Backing, Follow, Comment, Update, Setting].map((M) => M.syncIndexes()));
+  await Setting.get();   // default Lab Score weights
 
   await User.create({ name: 'Portal Admin', email: mail('innovationlab.admin'), password: 'admin123', role: 'admin', verified: true });
 
@@ -97,6 +106,11 @@ const run = async () => {
     profile: { department, year: 3, batch: '2023-2027', rollNo: `23${department}${String(101 + i)}`, skills },
   })));
   const [arun, priya, karthik, divya, suresh, meena, vignesh] = students;
+  // A few more students so backer counts look like a real campus
+  const crowd = await User.create(['Anitha', 'Bala', 'Charan', 'Deepa', 'Ezhil', 'Farhan', 'Gokul', 'Harini'].map((name, i) => ({
+    name: `${name} ${String.fromCharCode(65 + i)}`, email: mail(`${name.toLowerCase()}.${i + 1}`), password: 'student123',
+    profile: { department: ['CSE', 'IT', 'ECE', 'EEE'][i % 4], year: 2, batch: '2024-2028' },
+  })));
   const m = (u, role) => ({ user: u._id, githubUsername: u.githubUsername, role });
 
   // ---- 1. Live MERN app, launched 5 days ago (shows the "New" badge) ----
@@ -106,7 +120,8 @@ const run = async () => {
     problem: 'Students and staff wait 20–40 minutes at stops because nobody knows where the 32 college buses are. Drivers get calls while driving.',
     solution: 'A driver web app shares GPS every 10 seconds; students open a PWA, pick their route and see the bus on a map with an ETA to their stop. Admin sees all buses and late trips.',
     impact: 'Pilot on 4 routes: average wait at stop down from 24 to 7 minutes in two weeks.',
-    liveUrl: 'https://campusbus-demo.example.com', repoUrl: 'https://github.com/nec-demo/campusbus-live',
+    lookingFor: ['Drivers on routes 9-14 willing to test the driver app', 'A mentor who has shipped a PWA at scale'],
+    liveUrl: 'https://example.com', repoUrl: 'https://github.com/nec-demo/campusbus-live',
     competitions: [{ name: 'NEC Hackathon 2026', stage: 'winner', confirmed: true, date: daysAgo(40) }],
     owner: arun._id, members: [m(arun, 'Lead · Backend'), m(karthik, 'Frontend')], mentor: drRamesh._id,
     status: 'published', publishedAt: daysAgo(5), review: { submittedAt: daysAgo(6), reviewedAt: daysAgo(5), reviewedBy: drRamesh._id },
@@ -119,6 +134,7 @@ const run = async () => {
     problem: 'Small farmers around Erode run drip lines on a timer, wasting 30–40% of water and power, and over-watering turmeric causes root rot.',
     solution: 'Capacitive soil sensors feed an ESP32 that opens a solenoid valve below a moisture threshold. Readings go to a Flutter app over MQTT so the farmer can see each bed and override by SMS when the network is weak.',
     impact: 'Field trial on 0.5 acre: 31% less water over 3 weeks with the same leaf health score.',
+    lookingFor: ['20 farmers around Erode to pilot for one season', 'A teammate who knows PCB design'],
     repoUrl: 'https://github.com/nec-demo/krishimitra-drip',
     competitions: [{ name: 'SIH 2026', psId: 'SIH1642', stage: 'finalist', date: daysAgo(20) }],
     owner: divya._id, members: [m(divya, 'Lead · Firmware'), m(suresh, 'Mobile app'), m(vignesh, 'Mechanical')], mentor: drLakshmi._id,
@@ -200,6 +216,67 @@ const run = async () => {
     await Project.updateOne({ _id: p._id }, { 'counts.views': total });
   }
 
+  // ---- P1: backers, follows, offers, comments, updates ----
+  const everyone = [...students, ...crowd];
+  const onTeam = (p, u) => p.members.some((m) => String(m.user?._id || m.user) === String(u._id));
+  const backRows = [];
+  for (const [p, n] of [[bus, 12], [krishi, 9], [medi, 4]]) {
+    everyone.filter((u) => !onTeam(p, u)).slice(0, n)
+      .forEach((u, i) => backRows.push({ project: p._id, user: u._id, type: 'back', fromCollege: true, createdAt: daysAgo(i % 9) }));
+  }
+  await Backing.insertMany([
+    ...backRows,
+    { project: krishi._id, user: drRamesh._id, type: 'back', fromCollege: true },
+    { project: krishi._id, user: drRamesh._id, type: 'mentor', note: 'Happy to review the MQTT reliability design before the SIH finals.' },
+    { project: bus._id, user: drLakshmi._id, type: 'pilot', status: 'confirmed', note: 'Transport office: pilot on all 32 buses for the odd semester.' },
+    { project: medi._id, user: karthik._id, type: 'pilot', status: 'pending', note: 'College health centre wants to try it at the weekly X-ray camps.' },
+  ]);
+  const follows = [];
+  for (const [p, from, to] of [[bus, 0, 10], [krishi, 3, 9], [medi, 5, 8]]) {
+    everyone.slice(from, to).filter((u) => !onTeam(p, u)).forEach((u) => follows.push({ project: p._id, user: u._id }));
+  }
+  await Follow.insertMany(follows);
+
+  const question = await Comment.create({ project: krishi._id, user: crowd[2]._id, body: 'Does it still work when the mobile network drops in the field?', createdAt: daysAgo(3) });
+  await Comment.create([
+    { project: krishi._id, user: divya._id, parent: question._id, body: 'Yes. The ESP32 keeps the last threshold and runs offline; the app syncs when it reconnects.', createdAt: daysAgo(2) },
+    { project: krishi._id, user: drRamesh._id, body: 'Strong field data. Add the water-meter readings to the impact section.', createdAt: daysAgo(1) },
+    { project: bus._id, user: crowd[0]._id, body: 'Used it this morning on route 7, the ETA was spot on!', createdAt: daysAgo(2) },
+    { project: bus._id, user: crowd[5]._id, body: 'buy cheap followers at spam-link dot com', reports: [crowd[1]._id], createdAt: daysAgo(1) },
+    { project: medi._id, user: crowd[3]._id, body: 'Which dataset did you fine-tune on, and how did you handle class imbalance?', createdAt: daysAgo(6) },
+  ]);
+
+  await Update.create([
+    { project: bus._id, author: arun._id, title: 'Live on 4 routes', body: 'Transport office approved a 2-week pilot. Wait time at stops dropped from 24 to 7 minutes.', createdAt: daysAgo(4) },
+    { project: bus._id, author: karthik._id, title: 'Offline map tiles', body: 'The PWA now caches route maps, so it works in the dead zone near the hostel.', createdAt: daysAgo(12) },
+    { project: krishi._id, author: divya._id, title: 'SIH 2026: through to the finals', body: 'Grand finale in December. Working on the SMS fallback next.', createdAt: daysAgo(20) },
+    { project: medi._id, author: priya._id, title: 'Grad-CAM heat maps added', createdAt: daysAgo(75) },
+  ]);
+
+  // Counters from the rows above
+  for (const p of [bus, krishi, medi, queued]) {
+    const [backers, followers, comments, updates] = await Promise.all([
+      Backing.countDocuments({ project: p._id, type: 'back' }),
+      Follow.countDocuments({ project: p._id }),
+      Comment.countDocuments({ project: p._id, hidden: false, deleted: false }),
+      Update.countDocuments({ project: p._id }),
+    ]);
+    await Project.updateOne({ _id: p._id }, { $set: {
+      'counts.backers': backers, 'counts.backersCollege': backers, 'counts.backersPublic': 0,
+      'counts.followers': followers, 'counts.comments': comments, 'counts.updates': updates,
+    } });
+  }
+
+  // 30 days of live checks for CampusBus: 29 up, 1 down
+  for (let d = 0; d < 30; d++) {
+    const date = daysAgo(d);
+    date.setUTCHours(0, 0, 0, 0);
+    await MetricDaily.updateOne({ project: bus._id, date }, { $set: { uptimeOk: d !== 11, status: d !== 11 ? 200 : 503 } }, { upsert: true });
+  }
+  await Project.updateOne({ _id: bus._id }, { $set: { live: { checkedAt: new Date(), ok: true, status: 200 } } });
+
+  for (const p of [bus, krishi, medi]) await recompute(p._id);
+
   // ---- A few notes so the starter's admin dashboard still has data ----
   await Note.create(students.slice(0, 3).map((s) => ({ user: s._id, title: `${s.name}'s demo-day checklist`, tags: ['project'] })));
 
@@ -207,7 +284,8 @@ const run = async () => {
   admin    ${mail('innovationlab.admin')} / admin123
   faculty  ${mail('ramesh.cse')}, ${mail('lakshmi.ece')} / faculty123
   students ${mail('arun.k')}, ${mail('priya.s')}, ${mail('karthik.m')}, ${mail('divya.r')}… / student123
-  3 published projects + 1 waiting in Dr. Ramesh's review queue`);
+  3 published projects + 1 waiting in Dr. Ramesh's review queue
+  P1: backers, follows, comments (1 reported), updates, 1 pending pilot, Lab Scores computed`);
   process.exit(0);
 };
 
