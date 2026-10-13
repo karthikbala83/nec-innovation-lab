@@ -157,7 +157,7 @@ Added in v0.2:
 | Hosting | Free tiers to start (Vercel + Render + Atlas, as in `docs/STARTER.md`), or `docker compose` on the college server later |
 | Logins | College email only for students/faculty; public visitors sign in only to back/comment |
 | Media | College-owned S3 / Cloudinary account; video as YouTube unlisted links in v1 to keep cost near zero |
-| AI (Lotus) | College's own API key with a monthly cap set in admin — see open decision #1 |
+| AI (Lotus) | Saravonix Lotus API (free NEC quota); the portal stores questions, answers and scores it receives |
 | Moderation | Mentor approves before public; report button; admin can hide |
 | Privacy | No phone numbers or personal emails public; recruiter contact only through placement cell |
 | Other colleges | Not in scope now. Kept single-college; multi-college is a later fork |
@@ -208,7 +208,7 @@ Added in v0.2:
 
 ## 14. Open decisions for KB / the college
 
-1. **Lotus engine ownership.** (a) Fully open inside this repo, college pays its own AI key; or (b) Lotus runs as a Saravonix API the portal calls, so Saravonix keeps the IP and offers it to other colleges. Recommendation: **(b)** — the portal is the college's, the question engine stays a Saravonix service with a free quota for NEC.
+1. ~~Lotus engine ownership~~ **Decided (13 Oct 2026):** Lotus runs as a **Saravonix API** that the portal calls (`LOTUS_API_URL`, `LOTUS_API_KEY`), with a free quota for NEC. This repo holds only the client: send repo snapshot + member files, receive questions, send answers, receive scores. Saravonix keeps the engine IP and can offer it to other colleges.
 2. **Domain name:** `innovation.nandha.ac.in`, `lab.nandha.ac.in`, or other.
 3. **Who approves:** mentor only, or mentor + HoD for public visibility.
 4. **Public backing:** allow non-college visitors to back from day one, or college-only in P1.

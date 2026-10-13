@@ -9,6 +9,7 @@ NEC Innovation Lab: Nandha Engineering College's student project portal. Product
 - New portal features live under `server/` and `client/src/` in feature folders (`projects/`, `feed/`, `lotus/`…), not in the starter's demo `notes` code.
 - New env vars go into the matching `.env.example` with a comment. Never commit `.env`.
 - Mobile-first UI: every page must work at 400 px width.
+- Lotus Blossom questions come from the external Saravonix Lotus API (`LOTUS_API_URL`, `LOTUS_API_KEY`). Never build the question engine or put AI prompts for it in this repo; write a thin client in `server/services/lotusClient.js` and mock it in development.
 - No public personal phone numbers or emails; recruiter contact goes through the placement cell.
 
 ## Workflow
