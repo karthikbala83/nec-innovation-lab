@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PersonLink, timeAgo, errorText } from '../components/ui.jsx';
+import ImageUpload from '../components/ImageUpload.jsx';
 
 export default function Timeline({ project }) {
   const { user } = useAuth();
@@ -59,6 +60,8 @@ export default function Timeline({ project }) {
             onChange={(e) => setForm({ ...form, body: e.target.value })} aria-label="Update details" />
           <input placeholder="Link to a photo or video (optional)" value={form.media} inputMode="url"
             onChange={(e) => setForm({ ...form, media: e.target.value })} aria-label="Media link" />
+          <ImageUpload projectId={project._id} kind="update" label="Upload photo"
+            onUploaded={(url) => setForm((f) => ({ ...f, media: url }))} />
           <div className="actions">
             <button disabled={busy || !form.title.trim()}>Post</button>
             <button type="button" className="ghost" onClick={() => setOpen(false)}>Cancel</button>
@@ -77,7 +80,9 @@ export default function Timeline({ project }) {
               <span className="muted small">{timeAgo(u.createdAt)}</span>
             </div>
             {u.body && <p className="prose">{u.body}</p>}
-            {u.media && <a href={u.media} target="_blank" rel="noreferrer" className="small">See media ↗</a>}
+            {u.media && (/\.(png|jpe?g|webp|gif)(\?|$)/i.test(u.media)
+              ? <a href={u.media} target="_blank" rel="noreferrer"><img className="update-img" src={u.media} alt="" loading="lazy" /></a>
+              : <a href={u.media} target="_blank" rel="noreferrer" className="small">See media ↗</a>)}
             <p className="muted small">
               by <PersonLink user={u.author} />
               {user && (String(u.author?._id) === String(user.id) || user.role === 'admin') && (

@@ -245,3 +245,7 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eef1f7; }
 .weights { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
 @media (min-width: 640px) { .weights { grid-template-columns: repeat(3, 1fr); } }
 .admin-item { border-top: 1px solid var(--line); padding: 10px 0; }
+
+/* ---- uploads ---- */
+.upload { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 12px; }
+.update-img { display: block; max-height: 240px; border-radius: 6px; margin: 6px 0; }

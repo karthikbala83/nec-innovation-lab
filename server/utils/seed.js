@@ -4,7 +4,6 @@
 // projects and 1 project waiting in the mentor queue. Repo snapshots
 // are fixtures (no GitHub calls), so seeding works offline.
 require('dotenv').config();
-const mongoose = require('mongoose');
 const User = require('../models/User');
 const Note = require('../models/Note');
 const Session = require('../models/Session');
@@ -72,7 +71,7 @@ const snapshotFor = (project, members, spec) => {
 };
 
 const run = async () => {
-  await mongoose.connect(process.env.MONGO_URI);
+  await require('../config/db').connect();
   await Promise.all([
     User.deleteMany(), Note.deleteMany(), Session.deleteMany(),
     Project.deleteMany(), RepoSnapshot.deleteMany(), MetricDaily.deleteMany(),

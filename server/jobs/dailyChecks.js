@@ -95,8 +95,7 @@ module.exports = { runDailyChecks, rescoreAll, startScheduler };
 // npm run daily
 if (require.main === module) {
   require('dotenv').config();
-  const mongoose = require('mongoose');
-  mongoose.connect(process.env.MONGO_URI)
+  require('../config/db').connect()
     .then(runDailyChecks)
     .then(() => process.exit(0))
     .catch((err) => { console.error(err); process.exit(1); });

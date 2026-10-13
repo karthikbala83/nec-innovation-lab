@@ -9,6 +9,7 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext.jsx';
 import { StatusBadge, Spinner, Avatar, errorText, timeAgo } from '../components/ui.jsx';
 import { SecretWarnings } from './LaunchPage.jsx';
+import ImageUpload from '../components/ImageUpload.jsx';
 
 const STEPS = ['Basics', 'Story', 'Proof & media', 'Team', 'Code', 'Submit'];
 const DEPARTMENTS = ['CSE', 'IT', 'AI&DS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'BME', 'Other'];
@@ -124,7 +125,7 @@ export default function ProjectWizard() {
       <div className="card">
         {step === 1 && <Basics form={form} set={set} />}
         {step === 2 && <Story form={form} set={set} setForm={setForm} />}
-        {step === 3 && <Proof form={form} setForm={setForm} set={set} />}
+        {step === 3 && <Proof form={form} setForm={setForm} set={set} projectId={id} />}
         {step === 4 && <Team form={form} setForm={setForm} isOwner={isOwner} ownerId={project?.owner || user?.id} />}
         {step === 5 && <CodeStep project={project} repoUrl={form.repoUrl} />}
         {step === 6 && <SubmitStep project={project} onChange={setProject} />}
@@ -219,7 +220,7 @@ function Story({ form, set, setForm }) {
   );
 }
 
-function Proof({ form, setForm, set }) {
+function Proof({ form, setForm, set, projectId }) {
   const shots = form.screenshots.join('\n');
   return (
     <>
@@ -230,11 +231,19 @@ function Proof({ form, setForm, set }) {
       <Field label="Demo video" hint="YouTube (unlisted is fine) — it plays on your page">
         <input value={form.videoUrl} onChange={set('videoUrl')} placeholder="https://youtu.be/…" inputMode="url" />
       </Field>
-      <Field label="Thumbnail image URL" hint="Optional. Without one we generate a cover from your title.">
-        <input value={form.thumbnail} onChange={set('thumbnail')} inputMode="url" />
+      <Field label="Thumbnail image" hint="Upload, or paste a link. Without one we generate a cover from your title. 16:9 looks best.">
+        <input value={form.thumbnail} onChange={set('thumbnail')} inputMode="url" placeholder="https://…" />
       </Field>
-      <Field label="Architecture diagram URL"><input value={form.architectureImage} onChange={set('architectureImage')} inputMode="url" /></Field>
-      <Field label="Screenshot URLs" hint="One per line, up to 8">
+      <ImageUpload projectId={projectId} kind="thumbnail" label="Upload thumbnail"
+        onUploaded={(url) => setForm((f) => ({ ...f, thumbnail: url }))} />
+      <Field label="Architecture diagram"><input value={form.architectureImage} onChange={set('architectureImage')} inputMode="url" placeholder="https://…" /></Field>
+      <ImageUpload projectId={projectId} kind="architecture" label="Upload diagram"
+        onUploaded={(url) => setForm((f) => ({ ...f, architectureImage: url }))} />
+      {form.screenshots.length < 8 && (
+        <ImageUpload projectId={projectId} kind="screenshot" label="Upload screenshot"
+          onUploaded={(url) => setForm((f) => ({ ...f, screenshots: [...f.screenshots, url].slice(0, 8) }))} />
+      )}
+      <Field label="Screenshot links" hint="One per line, up to 8. Uploaded screenshots appear here.">
         <textarea rows={3} value={shots}
           onChange={(e) => setForm({ ...form, screenshots: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 8) })} />
       </Field>
