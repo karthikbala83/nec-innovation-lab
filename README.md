@@ -52,6 +52,21 @@ Details and deployment: [docs/STARTER.md](docs/STARTER.md).
 | Faculty | `/review` | Approval queue. Nothing is public until the mentor approves |
 | Admin | `/admin/people` | Promote faculty, mark students verified |
 
+## P1 at a glance
+
+| Who | Where | What |
+|---|---|---|
+| Signed-in users | launch page | 👏 Back (one per person, college vs public counted apart), Follow, comment + reply, report |
+| Faculty / anyone | launch page | Offer to mentor (faculty) · Offer a pilot (badge after admin confirms) |
+| Team | launch page, wizard | Update timeline · up to 3 "Looking for" asks |
+| Anyone | launch page | Performance panel: Lab Score 0-100 with all six parts and the reason for each |
+| Anyone | `/leaderboards` | Lab Score · Most backed · Most active repo · Best uptime, by department |
+| Admin | `/admin/lab` | Score weights (must total 100, re-scores everything), confirm pilots, reported comments, run daily checks |
+
+**Lab Score** (`server/score/labScore.js`): Understanding 35 (Lotus, arrives in P2, scores 0 until then) · Build activity 15 · It works 15 · Community 15 · Recognition 15 · Freshness 5. Weights live in the `settings` collection.
+
+**Daily checks** (`server/jobs/dailyChecks.js`): ping live URLs (private/internal addresses are refused, so students can't use it to probe the network), refresh repos when `GITHUB_TOKEN` is set, re-score everything. Runs inside the API every ~24 h, or `npm run daily` from a cron.
+
 **GitHub import** (`server/projects/repoImport.js`): public repos only, server token (`GITHUB_TOKEN`), cached for `GITHUB_CACHE_MINUTES`. One tarball download instead of one call per file; skips `node_modules`, builds, lockfiles, binaries and files over 500 KB; scans for committed keys (masked, shown only to the team, mentor and admin); maps commits to members by GitHub username.
 
 ## Roadmap
