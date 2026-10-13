@@ -10,13 +10,27 @@ const signToken = (userId, sessionId) =>
   });
 
 // POST /api/auth/signup
+// College email only. Role is never taken from the body — admins promote faculty.
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, profile } = req.body;
-    const exists = await User.findOne({ email });
+    const { name, email, password, githubUsername, profile = {} } = req.body;
+    if (!User.isCollegeEmail(email)) {
+      const domains = User.allowedDomains();
+      return res.status(400).json({
+        message: domains.length
+          ? `Use your college email (@${domains.join(' or @')})`
+          : 'Signup is closed: ALLOWED_EMAIL_DOMAIN is not configured on the server',
+      });
+    }
+    const exists = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (exists) return res.status(400).json({ message: 'Email already registered' });
 
-    const user = await User.create({ name, email, password, profile });
+    const { department, year, batch, rollNo, skills } = profile;
+    const user = await User.create({
+      name, email, password,
+      githubUsername: githubUsername || undefined,
+      profile: { department, year, batch, rollNo, skills },
+    });
     // auto-login after signup: create session + token
     const session = await Session.create({
       user: user._id,
@@ -24,10 +38,7 @@ exports.signup = async (req, res) => {
       ip: req.ip,
     });
     const token = signToken(user._id, session._id);
-    res.status(201).json({
-      token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    });
+    res.status(201).json({ token, user: user.toAuthJSON() });
   } catch (err) {
     // Mongoose validation errors come out here — show them to the student
     res.status(400).json({ message: err.message });
@@ -51,10 +62,7 @@ exports.login = async (req, res) => {
     ip: req.ip,
   });
   const token = signToken(user._id, session._id);
-  res.json({
-    token,
-    user: { id: user._id, name: user.name, email: user.email, role: user.role },
-  });
+  res.json({ token, user: user.toAuthJSON() });
 };
 
 // POST /api/auth/logout  (protected)

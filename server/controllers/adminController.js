@@ -97,10 +97,34 @@ exports.dashboard = async (req, res) => {
   });
 };
 
+// PATCH /api/admin/users/:id  { role?, verified? }
+// Admin promotes faculty and marks students verified (roll number checked).
+exports.updateUser = async (req, res) => {
+  const { role, verified } = req.body;
+  const user = await User.findById(req.params.id);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  if (role !== undefined) {
+    if (!['student', 'faculty', 'admin'].includes(role)) return res.status(400).json({ message: 'Unknown role' });
+    if (String(user._id) === String(req.user._id) && role !== 'admin')
+      return res.status(400).json({ message: 'You cannot remove your own admin role' });
+    user.role = role;
+  }
+  if (verified !== undefined) user.verified = !!verified;
+  await user.save();
+  res.json({ id: user._id, role: user.role, verified: user.verified });
+};
+
 // GET /api/admin/users  — paginated user list with note counts (JOIN + facet)
 exports.listUsers = async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
+  const { page = 1, limit = 10, q, role } = req.query;
+  const match = {};
+  if (['student', 'faculty', 'admin'].includes(role)) match.role = role;
+  if (q) {
+    const re = new RegExp(String(q).slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    match.$or = [{ name: re }, { email: re }, { 'profile.rollNo': re }];
+  }
   const result = await User.aggregate([
+    { $match: match },
     {
       $lookup: { from: 'notes', localField: '_id', foreignField: 'user', as: 'notes' },
     },
@@ -109,6 +133,11 @@ exports.listUsers = async (req, res) => {
         name: 1,
         email: 1,
         role: 1,
+        handle: 1,
+        verified: 1,
+        githubUsername: 1,
+        'profile.rollNo': 1,
+        'profile.batch': 1,
         'profile.department': 1,
         'profile.year': 1,
         'profile.skills': 1,
@@ -120,7 +149,7 @@ exports.listUsers = async (req, res) => {
     { $sort: { createdAt: -1 } },
     {
       $facet: {                          // pagination + total in ONE round trip
-        data: [{ $skip: (page - 1) * limit }, { $limit: Number(limit) }],
+        data: [{ $skip: (Number(page) - 1) * Number(limit) }, { $limit: Number(limit) }],
         total: [{ $count: 'count' }],
       },
     },

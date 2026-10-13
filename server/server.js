@@ -8,15 +8,14 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const trackActivity = require('./middleware/trackActivity');
+const errorHandler = require('./middleware/errorHandler');
+const { profiles, users } = require('./profiles/profileRoutes');
 
 const app = express();
 
 // ---- Global middleware ----
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
-app.use(express.json());
-
-// ---- Connect database ----
-connectDB();
+app.use(express.json({ limit: '200kb' }));
 
 // ---- Routes ----
 app.get('/', (req, res) => res.json({ status: 'API running', time: new Date() }));
@@ -24,12 +23,21 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/notes', trackActivity, require('./routes/noteRoutes'));
 app.use('/api/admin', trackActivity, require('./routes/adminRoutes'));
 
+// ---- NEC Innovation Lab (P0) ----
+app.use('/api/feed', require('./feed/feedRoutes'));                  // public
+app.use('/api/profiles', profiles);                                  // public
+app.use('/api/projects', require('./projects/projectRoutes'));      // mixed: see file
+app.use('/api/users', users);                                        // logged in
+app.use('/api/review', trackActivity, require('./review/reviewRoutes'));   // faculty / admin
+
 // ---- 404 + error handler ----
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Server error', error: err.message });
-});
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`API listening on port ${PORT}`));
+if (require.main === module) {
+  connectDB();
+  app.listen(PORT, () => console.log(`API listening on port ${PORT}`));
+}
+
+module.exports = app;   // tests import the app without starting it

@@ -26,4 +26,26 @@ const adminOnly = (req, res, next) => {
   next();
 };
 
-module.exports = { protect, adminOnly };
+// Allow only the listed roles: router.post('/x', requireRole('faculty', 'admin'), handler)
+const requireRole = (...roles) => (req, res, next) => {
+  if (!roles.includes(req.user?.role))
+    return res.status(403).json({ message: `Only ${roles.join(' / ')} can do this` });
+  next();
+};
+
+// Public pages: attach req.user if a valid token is present, otherwise carry on
+// as an anonymous visitor. A bad/expired token is ignored, never a 401.
+const optionalAuth = async (req, res, next) => {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.split(' ')[1] : null;
+  if (!token) return next();
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = (await User.findById(decoded.id)) || undefined;
+  } catch {
+    /* anonymous */
+  }
+  next();
+};
+
+module.exports = { protect, adminOnly, requireRole, optionalAuth };

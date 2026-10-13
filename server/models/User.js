@@ -23,7 +23,17 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,         // never returned in queries unless explicitly asked
     },
-    role: { type: String, enum: ['student', 'admin'], default: 'student' },
+    // student by default; an admin promotes faculty (never self-chosen at signup)
+    role: { type: String, enum: ['student', 'faculty', 'admin'], default: 'student', index: true },
+
+    // ---- NEC Innovation Lab identity ----
+    // handle = public profile URL (/u/<handle>). Email is never shown publicly.
+    handle: { type: String, unique: true, lowercase: true, trim: true, match: /^[a-z0-9-]{3,40}$/ },
+    githubUsername: {
+      type: String, trim: true,
+      match: [/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/, 'Invalid GitHub username'],
+    },
+    verified: { type: Boolean, default: false },   // admin checked the roll number
 
     // ---- NESTED JSON inside a column ----
     // In SQL this would be 3 extra tables. Here it's one sub-document.
@@ -31,6 +41,8 @@ const userSchema = new mongoose.Schema(
       college: { type: String, default: 'Nandha Engineering College' },
       department: { type: String, default: 'CSE' },
       year: { type: Number, min: 1, max: 4, default: 2 },
+      batch: { type: String, trim: true, match: [/^\d{4}-\d{4}$/, 'Batch looks like 2023-2027'] },
+      rollNo: { type: String, trim: true, uppercase: true, maxlength: 20 },   // never public
       skills: [{ type: String }],              // array inside the document
       social: {
         github: String,
@@ -45,6 +57,32 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }        // adds createdAt / updatedAt automatically
 );
 
+// ---- College email only. ALLOWED_EMAIL_DOMAIN may list several: "a.ac.in,b.ac.in" ----
+userSchema.statics.allowedDomains = () =>
+  (process.env.ALLOWED_EMAIL_DOMAIN || '')
+    .split(',')
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean);
+
+userSchema.statics.isCollegeEmail = function (email) {
+  const domains = this.allowedDomains();
+  const at = String(email || '').toLowerCase().trim().split('@');
+  return at.length === 2 && domains.includes(at[1]);
+};
+
+// ---- Give every user a public handle from the email local part: arun.k -> arun-k ----
+userSchema.pre('validate', async function () {
+  if (this.handle) return;
+  const base = (this.email || 'user').split('@')[0].toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).padEnd(3, '0');
+  let candidate = base;
+  for (let n = 2; await this.constructor.exists({ handle: candidate }); n++) candidate = `${base}-${n}`;
+  this.handle = candidate;
+});
+
+// What anyone (logged in or not) may see about a person
+userSchema.statics.PUBLIC_FIELDS = 'name handle role verified githubUsername profile.department profile.batch profile.skills';
+
 // ---- Hash password BEFORE saving. Never store plain text. ----
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
@@ -55,6 +93,11 @@ userSchema.pre('save', async function () {
 // ---- Instance methods keep logic on the model, not the controller ----
 userSchema.methods.comparePassword = function (plain) {
   return bcrypt.compare(plain, this.password);
+};
+
+// Shape sent to the client after login/signup
+userSchema.methods.toAuthJSON = function () {
+  return { id: this._id, name: this.name, email: this.email, role: this.role, handle: this.handle };
 };
 
 userSchema.methods.createResetToken = function () {
