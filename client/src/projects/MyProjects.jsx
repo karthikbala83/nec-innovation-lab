@@ -4,12 +4,17 @@ import { Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext.jsx';
 import { StatusBadge, StageBadge, Thumb, Spinner, timeAgo } from '../components/ui.jsx';
+import ProjectCard from '../feed/ProjectCard.jsx';
 
 export default function MyProjects() {
   const { user } = useAuth();
   const [projects, setProjects] = useState(null);
+  const [following, setFollowing] = useState([]);
 
-  useEffect(() => { api.get('/projects/mine').then((r) => setProjects(r.data)).catch(() => setProjects([])); }, []);
+  useEffect(() => {
+    api.get('/projects/mine').then((r) => setProjects(r.data)).catch(() => setProjects([]));
+    api.get('/me/following').then((r) => setFollowing(r.data)).catch(() => {});
+  }, []);
 
   return (
     <div>
@@ -42,6 +47,13 @@ export default function MyProjects() {
           </li>
         ))}
       </ul>
+
+      {following.length > 0 && (
+        <>
+          <h2>Following ({following.length})</h2>
+          <div className="card-grid">{following.map((p) => <ProjectCard key={p._id} project={p} />)}</div>
+        </>
+      )}
     </div>
   );
 }

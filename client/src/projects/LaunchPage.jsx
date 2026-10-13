@@ -6,12 +6,18 @@ import {
   StageBadge, StatusBadge, Avatar, Thumb, PersonLink, Sparkline, Spinner,
   timeAgo, youTubeId, errorText,
 } from '../components/ui.jsx';
+import BackFollowBar from '../community/BackFollowBar.jsx';
+import Backers from '../community/Backers.jsx';
+import Comments from '../community/Comments.jsx';
+import Timeline from '../updates/Timeline.jsx';
+import PerformancePanel from '../score/PerformancePanel.jsx';
 
 export default function LaunchPage() {
   const { slug } = useParams();
   const [p, setP] = useState(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [backRefresh, setBackRefresh] = useState(0);
 
   useEffect(() => {
     setP(null);
@@ -77,8 +83,17 @@ export default function LaunchPage() {
           <p className="muted">
             {p.publishedAt ? `Launched ${timeAgo(p.publishedAt)}` : 'Not launched yet'} · 👁 {p.counts?.views || 0} views
           </p>
+          <BackFollowBar project={p} onCounts={() => setBackRefresh((n) => n + 1)} />
         </div>
       </header>
+
+      {p.lookingFor?.length > 0 && (
+        <section className="card looking-for">
+          <h2>Looking for</h2>
+          <ul>{p.lookingFor.map((ask) => <li key={ask}>🙋 {ask}</li>)}</ul>
+          <p className="muted small">Can help? Leave a comment below or use Offer a pilot.</p>
+        </section>
+      )}
 
       {p.competitions?.length > 0 && (
         <div className="chips">
@@ -106,9 +121,12 @@ export default function LaunchPage() {
               </div>
             </section>
           )}
+          <Timeline project={p} />
+          {p.status === 'published' && <Comments projectId={p._id} />}
         </div>
 
         <aside>
+          {p.status === 'published' && <PerformancePanel project={p} />}
           <section className="card">
             <h2>Team</h2>
             <ul className="team">
@@ -137,6 +155,7 @@ export default function LaunchPage() {
           {code ? <CodePanel code={code} /> : p.repoUrl && (
             <section className="card"><h2>Code</h2><p className="muted">Repo not imported yet.</p></section>
           )}
+          {p.status === 'published' && <Backers projectId={p._id} refreshKey={backRefresh} />}
         </aside>
       </div>
     </article>

@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
 import { StageBadge, AvatarStack, Thumb } from '../components/ui.jsx';
 
+// Live/down dot from the daily check (grey until the first check)
+function LivePill({ live }) {
+  if (!live?.checkedAt) return <span className="live-pill unknown" title="Has a live demo, not checked yet">● live demo</span>;
+  return live.ok
+    ? <span className="live-pill" title={`Up at last check${live.uptime30d != null ? `, ${live.uptime30d}% over 30 days` : ''}`}>● live</span>
+    : <span className="live-pill down" title="Did not answer at the last daily check">● down</span>;
+}
+
 // One card in the feed / on a profile
 export default function ProjectCard({ project, extra }) {
   const p = project;
@@ -10,7 +18,7 @@ export default function ProjectCard({ project, extra }) {
       <div className="project-card-body">
         <div className="row-between">
           <h3>{p.title}</h3>
-          {p.liveUrl && <span className="live-pill" title="Has a live demo">● live demo</span>}
+          {p.liveUrl && <LivePill live={p.live} />}
         </div>
         <p className="tagline">{p.tagline}</p>
         <div className="chips">
@@ -22,7 +30,8 @@ export default function ProjectCard({ project, extra }) {
         <div className="row-between card-foot">
           <AvatarStack members={p.members} />
           <span className="muted">
-            👏 {p.counts?.backers || 0} · 👁 {p.counts?.views || 0}
+            {p.labScore?.total > 0 && <span className="score-chip" title="Lab Score">★ {p.labScore.total}</span>}
+            {' '}👏 {p.counts?.backers || 0} · 👁 {p.counts?.views || 0}
           </span>
         </div>
         {extra}

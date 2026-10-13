@@ -17,7 +17,7 @@ const EMPTY = {
   title: '', tagline: '', category: 'software', department: '', year: '', theme: '', stage: 'idea',
   problem: '', solution: '', impact: '',
   repoUrl: '', liveUrl: '', videoUrl: '', thumbnail: '', architectureImage: '', screenshots: [],
-  members: [], mentor: '', competitions: [],
+  members: [], mentor: '', competitions: [], lookingFor: [],
 };
 
 // Server project -> form state
@@ -32,7 +32,7 @@ const toForm = (p) => ({
 // Which fields each step sends
 const STEP_FIELDS = [
   ['title', 'tagline', 'category', 'department', 'year', 'theme', 'stage'],
-  ['problem', 'solution', 'impact'],
+  ['problem', 'solution', 'impact', 'lookingFor'],
   ['repoUrl', 'liveUrl', 'videoUrl', 'thumbnail', 'architectureImage', 'screenshots'],
   ['members', 'mentor', 'competitions'],
 ];
@@ -67,6 +67,7 @@ export default function ProjectWizard() {
     if (body.members) body.members = form.members.map((m) => ({ user: m.user._id, role: m.role, githubUsername: m.githubUsername.trim() }));
     if (body.competitions) body.competitions = form.competitions.filter((c) => c.name.trim());
     if (body.year === '') body.year = null;
+    if (body.lookingFor) body.lookingFor = form.lookingFor.map((a) => a.trim()).filter(Boolean);
     return body;
   };
 
@@ -122,7 +123,7 @@ export default function ProjectWizard() {
 
       <div className="card">
         {step === 1 && <Basics form={form} set={set} />}
-        {step === 2 && <Story form={form} set={set} />}
+        {step === 2 && <Story form={form} set={set} setForm={setForm} />}
         {step === 3 && <Proof form={form} setForm={setForm} set={set} />}
         {step === 4 && <Team form={form} setForm={setForm} isOwner={isOwner} ownerId={project?.owner || user?.id} />}
         {step === 5 && <CodeStep project={project} repoUrl={form.repoUrl} />}
@@ -194,7 +195,9 @@ function Basics({ form, set }) {
   );
 }
 
-function Story({ form, set }) {
+function Story({ form, set, setForm }) {
+  const asks = [0, 1, 2].map((i) => form.lookingFor[i] || '');
+  const setAsk = (i, v) => { const next = [...asks]; next[i] = v; setForm({ ...form, lookingFor: next }); };
   return (
     <>
       <Field label="The problem *" counter={<Counter value={form.problem} max={1500} />} hint="Who has this problem, and what does it cost them today?">
@@ -206,6 +209,12 @@ function Story({ form, set }) {
       <Field label="Impact so far" counter={<Counter value={form.impact} max={800} />} hint="Numbers beat adjectives: users, time saved, accuracy, trial results.">
         <textarea rows={3} value={form.impact} onChange={set('impact')} />
       </Field>
+      <h3>Looking for (up to 3)</h3>
+      <p className="hint">What would move you forward? Shown on your page.</p>
+      {asks.map((a, i) => (
+        <input key={i} value={a} maxLength={120} onChange={(e) => setAsk(i, e.target.value)} aria-label={`Ask ${i + 1}`}
+          placeholder={['A teammate with React skills', '20 farmers to pilot for 2 weeks', 'A mentor in agri-tech'][i]} />
+      ))}
     </>
   );
 }

@@ -14,6 +14,8 @@ import MyProjects from './projects/MyProjects.jsx';
 import ReviewQueue from './review/ReviewQueue.jsx';
 import Profile from './profiles/Profile.jsx';
 import People from './admin/People.jsx';
+import LabAdmin from './admin/LabAdmin.jsx';
+import Leaderboards from './leaderboards/Leaderboards.jsx';
 
 // Route guards — the frontend half of protection.
 // (The API enforces it too. Never trust only the frontend.)
@@ -37,6 +39,7 @@ export default function App() {
         <button className="menu-btn" aria-expanded={open} aria-label="Menu" onClick={() => setOpen(!open)}>☰</button>
         <div className={open ? 'nav-links open' : 'nav-links'} onClick={close}>
           <NavLink to="/" end>Explore</NavLink>
+          <NavLink to="/leaderboards">Leaderboards</NavLink>
           {user ? (
             <>
               <NavLink to="/me/projects">My projects</NavLink>
@@ -58,6 +61,7 @@ export default function App() {
           <Route path="/" element={<Feed />} />
           <Route path="/p/:slug" element={<LaunchPage />} />
           <Route path="/u/:handle" element={<Profile />} />
+          <Route path="/leaderboards" element={<Leaderboards />} />
 
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -70,6 +74,7 @@ export default function App() {
           <Route path="/review" element={<Protected roles={['faculty', 'admin']}><ReviewQueue /></Protected>} />
           <Route path="/admin" element={<Protected roles={['admin']}><Admin /></Protected>} />
           <Route path="/admin/people" element={<Protected roles={['admin']}><People /></Protected>} />
+          <Route path="/admin/lab" element={<Protected roles={['admin']}><LabAdmin /></Protected>} />
 
           {/* Starter demo, kept for teaching; not part of the portal */}
           <Route path="/notes" element={<Protected><Notes /></Protected>} />
