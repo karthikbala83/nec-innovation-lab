@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Git Merge Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one lab bench — commit graph on top, live terminal + file viewer beside it, step controls, then a rescue cheat-sheet. Saravonix brand: navy / gold / green. */
+:root{
+  --bg:#F4F6FB; --surface:#FFFFFF; --ink:#14213D; --muted:#56627E; --line:#D7DDEA;
+  --navy:#1E3E7B; --gold:#A8820A; --gold-soft:#F6EBC4; --green:#3D7A4C; --green-soft:#DDEEE1;
+  --red:#C0392B; --red-soft:#F8DEDA;
+  --term-bg:#0F1A31; --term-fg:#DCE3F2; --term-dim:#8C99B8; --term-cmd:#F0C94A; --term-ok:#86C99A; --term-err:#FF8D7A;
+  --display:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A1120; --surface:#111B31; --ink:#E6EBF5; --muted:#9BA7C3; --line:#24304D;
+  --navy:#86A8EA; --gold:#E2BE48; --gold-soft:#3A3115; --green:#7FB78C; --green-soft:#16301F;
+  --red:#F2806B; --red-soft:#3A1A16; --term-bg:#060C19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A1120; --surface:#111B31; --ink:#E6EBF5; --muted:#9BA7C3; --line:#24304D;
+  --navy:#86A8EA; --gold:#E2BE48; --gold-soft:#3A3115; --green:#7FB78C; --green-soft:#16301F;
+  --red:#F2806B; --red-soft:#3A1A16; --term-bg:#060C19; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:20px}
+header{display:grid;gap:6px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600}
+h1{font-size:clamp(26px,5vw,38px);line-height:1.15;margin:0;text-wrap:balance;font-weight:700}
+h1 em{font-style:normal;color:var(--navy)}
+.lede{margin:0;color:var(--muted);max-width:62ch}
+h2{font-size:20px;margin:0;text-wrap:balance}
+
+.bench{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px}
+.stephead{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.stepno{font-family:var(--mono);font-size:12px;color:var(--gold);font-weight:600}
+.steptitle{font-size:19px;font-weight:600;margin:0}
+.caption{margin:0;color:var(--muted);max-width:70ch}
+.caption b{color:var(--ink);font-weight:600}
+
+.graphbox{overflow-x:auto;border-radius:10px;background:color-mix(in srgb,var(--navy) 5%,transparent)}
+svg.graph{display:block;width:100%;max-width:760px;margin:0 auto;min-width:520px;height:auto}
+.lane{stroke:var(--line);stroke-width:2;stroke-dasharray:4 6}
+.lanelabel{fill:var(--muted);font:500 13px var(--mono)}
+.edge{fill:none;stroke:var(--navy);stroke-width:3}
+.edge.feat{stroke:var(--gold)}
+.edge.new{stroke-dasharray:200;stroke-dashoffset:200;animation:draw .7s ease forwards}
+.node circle{stroke-width:3}
+.node.main circle{fill:var(--surface);stroke:var(--navy)}
+.node.feat circle{fill:var(--surface);stroke:var(--gold)}
+.node.merge circle{fill:var(--green-soft);stroke:var(--green)}
+.node.conflict circle{fill:var(--red-soft);stroke:var(--red);stroke-dasharray:5 4;animation:shake .5s ease 2}
+.node text{font:600 14px var(--mono);fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.node.new{transform-box:fill-box;transform-origin:center;animation:pop .45s cubic-bezier(.3,1.6,.5,1) both}
+.tag rect{rx:6}
+.tag text{font:600 12px var(--mono);dominant-baseline:central;text-anchor:middle}
+.tag.main rect{fill:var(--navy)} .tag.main text{fill:var(--surface)}
+.tag.feat rect{fill:var(--gold)} .tag.feat text{fill:var(--surface)}
+.tag.head rect{fill:none;stroke:var(--ink);stroke-width:1.5} .tag.head text{fill:var(--ink)}
+.tag.remote rect{fill:var(--green)} .tag.remote text{fill:var(--surface)}
+.tag{transition:transform .5s ease}
+
+.panes{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}
+@media (max-width:760px){.panes{grid-template-columns:minmax(0,1fr)}}
+.term{background:var(--term-bg);color:var(--term-fg);border-radius:10px;font:13px/1.6 var(--mono);min-height:230px;display:flex;flex-direction:column;min-width:0}
+.termbar{display:flex;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid #ffffff14;color:var(--term-dim);font-size:11px}
+.dot{width:9px;height:9px;border-radius:50%;background:#ffffff26}
+.termbody{padding:10px 12px 14px;overflow-x:auto;white-space:pre}
+.l-cmd{color:var(--term-fg)} .l-cmd::before{content:"$ ";color:var(--term-cmd)}
+.l-out{color:var(--term-dim)} .l-err{color:var(--term-err)} .l-ok{color:var(--term-ok)} .l-note{color:var(--term-cmd)}
+.cursor{display:inline-block;width:7px;height:15px;background:var(--term-cmd);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+
+.side{display:grid;gap:10px;align-content:start;min-width:0}
+.file{border:1px solid var(--line);border-radius:10px;overflow:hidden;min-width:0}
+.filehead{font:600 12px var(--mono);padding:7px 12px;background:color-mix(in srgb,var(--navy) 8%,transparent);color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.filehead .st{color:var(--red)} .filehead .st.ok{color:var(--green)}
+.code{margin:0;padding:10px 12px;font:13px/1.65 var(--mono);overflow-x:auto;white-space:pre}
+.code .mk{color:var(--red);font-weight:600;background:var(--red-soft)}
+.code .ours{background:color-mix(in srgb,var(--navy) 14%,transparent)}
+.code .theirs{background:var(--gold-soft)}
+.code .keep{background:var(--green-soft)}
+.zones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;position:relative}
+.zone{border:1.5px dashed var(--line);border-radius:10px;padding:10px 8px 34px;font-size:12px;text-align:center;color:var(--muted);position:relative}
+.zone b{display:block;color:var(--ink);font-size:13px}
+.chip{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font:600 11px var(--mono);background:var(--gold);color:var(--surface);padding:2px 8px;border-radius:6px;white-space:nowrap}
+.tip{font-size:13px;border-left:3px solid var(--gold);padding:6px 10px;background:var(--gold-soft);border-radius:0 8px 8px 0;margin:0}
+
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between}
+.btns{display:flex;gap:8px}
+button{font:600 14px var(--display);border-radius:9px;border:1.5px solid var(--navy);background:transparent;color:var(--navy);padding:8px 14px;cursor:pointer}
+button.primary{background:var(--navy);color:var(--surface)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,.pip:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.pips{display:flex;gap:6px;flex-wrap:wrap}
+.pip{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);font:600 11px var(--mono);color:var(--muted);padding:0}
+.pip.on{border-color:var(--navy);background:var(--navy);color:var(--surface)}
+.pip.bad{border-color:var(--red)}
+
+.sheet{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.card h3{margin:0 0 8px;font-size:15px}
+.card.rescue{border-color:var(--red)}
+.card.rescue h3{color:var(--red)}
+dl{margin:0;display:grid;gap:8px}
+dt{font:600 13px var(--mono);color:var(--navy);overflow-wrap:anywhere}
+.card.rescue dt{color:var(--red)}
+dd{margin:0;font-size:13px;color:var(--muted)}
+footer{font-size:12px;color:var(--muted);text-align:center}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+@keyframes blink{50%{opacity:0}}
+@keyframes slide1{0%,15%{left:16.6%}45%,100%{left:50%}}
+@keyframes slide2{0%,15%{left:16.6%}40%,55%{left:50%}85%,100%{left:83.3%}}
+.zones .chip.move{left:16.6%;bottom:8px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Saravonix × Nandha · MERN Lab</div>
+    <h1>Branch, merge, and <em>survive a conflict</em></h1>
+    <p class="lede">Step through a real team workflow on the mern-starter repo. Watch the commit graph change with every command, then see exactly what a merge conflict looks like and how to fix it.</p>
+  </header>
+
+  <section class="bench" aria-label="Git walkthrough">
+    <div class="stephead">
+      <span class="stepno" id="stepno">STEP 1 / 9</span>
+      <h2 class="steptitle" id="steptitle"></h2>
+    </div>
+    <p class="caption" id="caption"></p>
+
+    <div class="graphbox"><svg class="graph" id="graph" viewBox="0 0 680 250" role="img" aria-label="Commit graph"></svg></div>
+
+    <div class="panes">
+      <div class="term" aria-live="polite">
+        <div class="termbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:6px">~/mern-starter</span></div>
+        <div class="termbody" id="term"></div>
+      </div>
+      <div class="side" id="side"></div>
+    </div>
+
+    <div class="controls">
+      <div class="btns">
+        <button id="prev">← Back</button>
+        <button id="next" class="primary">Next →</button>
+        <button id="play">▶ Auto-play</button>
+      </div>
+      <div class="pips" id="pips" role="tablist" aria-label="Steps"></div>
+    </div>
+  </section>
+
+  <h2>Cheat sheet</h2>
+  <div class="sheet">
+    <div class="card"><h3>Every day</h3><dl>
+      <dt>git status</dt><dd>What changed? Run it before every other command.</dd>
+      <dt>git add .</dt><dd>Stage all changes (check status first so .env never sneaks in).</dd>
+      <dt>git commit -m "Add signup form"</dt><dd>Save a snapshot. Say what changed, in present tense.</dd>
+      <dt>git pull</dt><dd>Get teammates' work before you start.</dd>
+      <dt>git push</dt><dd>Send your commits to GitHub.</dd>
+    </dl></div>
+    <div class="card"><h3>Branches</h3><dl>
+      <dt>git switch -c feature/signup</dt><dd>Create a branch and move onto it. One branch per feature.</dd>
+      <dt>git switch main</dt><dd>Go back to main.</dd>
+      <dt>git merge feature/signup</dt><dd>Bring that branch into the one you are on.</dd>
+      <dt>git branch -d feature/signup</dt><dd>Delete a branch after it is merged.</dd>
+      <dt>git log --oneline --graph --all</dt><dd>Draw this page's graph in your own terminal.</dd>
+    </dl></div>
+    <div class="card"><h3>Fixing a conflict</h3><dl>
+      <dt>1. Open the file</dt><dd>Find the &lt;&lt;&lt;&lt;&lt;&lt;&lt; / ======= / &gt;&gt;&gt;&gt;&gt;&gt;&gt; block.</dd>
+      <dt>2. Choose the final code</dt><dd>Keep one side, the other, or combine. Delete all three marker lines.</dd>
+      <dt>3. git add &lt;file&gt;</dt><dd>Tells Git "this file is resolved".</dd>
+      <dt>4. git commit</dt><dd>Completes the merge. Then run the app and test before you push.</dd>
+    </dl></div>
+    <div class="card rescue"><h3>Panic buttons</h3><dl>
+      <dt>git merge --abort</dt><dd>Cancel a messy merge and go back to before you started.</dd>
+      <dt>git restore &lt;file&gt;</dt><dd>Throw away unsaved edits to one file.</dd>
+      <dt>git restore --staged &lt;file&gt;</dt><dd>Unstage a file you added by mistake (like .env).</dd>
+      <dt>git stash / git stash pop</dt><dd>Park unfinished work, pull, then bring it back.</dd>
+      <dt>! [rejected] … fetch first</dt><dd>Your push was refused because GitHub has newer commits. Run git pull, fix any conflict, then push again.</dd>
+    </dl></div>
+  </div>
+  <footer>Saravonix Technologies Pvt. Ltd. · Built Right. Held Secure.</footer>
+</div>
+
+<script>
+(function(){
+const X=i=>50+i*82, LANE={main:100,feat:175};
+// commits: id, lane, col, parents
+const C={
+  A:{l:'main',c:0,p:[]}, B:{l:'main',c:1,p:['A']}, C:{l:'feat',c:2,p:['B']},
+  D:{l:'main',c:3,p:['B']}, M:{l:'main',c:4,p:['D','C'],merge:1},
+  E:{l:'feat',c:5,p:['M']}, F:{l:'main',c:6,p:['M']}, R:{l:'main',c:7,p:['F','E'],merge:1}
+};
+const conflictFile = n => ({name:'client/src/pages/Login.jsx', status:n?'resolved':'CONFLICT', ok:!!n, html: n?
+`<span>  return (</span>
+<span>    &lt;form onSubmit={handleLogin}&gt;</span>
+<span class="keep">      &lt;button&gt;Login now&lt;/button&gt;</span>
+<span>    &lt;/form&gt;</span>`:
+`<span>  return (</span>
+<span>    &lt;form onSubmit={handleLogin}&gt;</span>
+<span class="mk">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</span>
+<span class="ours">      &lt;button&gt;Sign in&lt;/button&gt;</span>
+<span class="mk">=======</span>
+<span class="theirs">      &lt;button&gt;Login now&lt;/button&gt;</span>
+<span class="mk">&gt;&gt;&gt;&gt;&gt;&gt;&gt; fix/button</span>
+<span>    &lt;/form&gt;</span>`});
+const S=[
+ {t:'Get the code', show:['A'], tags:{main:'A'}, head:'main', featName:'',
+  cap:'<b>git clone</b> copies the whole repo, with its full history, onto your laptop. You get one commit <b>A</b> on <b>main</b>. HEAD shows where you are standing.',
+  term:[['cmd','git clone https://github.com/karthikbala83/mern-starter.git'],['out',"Cloning into 'mern-starter'..."],['cmd','cd mern-starter'],['cmd','git log --oneline'],['out','a1f3c9e (HEAD -> main, origin/main) Initial MERN starter']],
+  side:{tip:'Fork the repo on GitHub first if you want your own copy you can push to.'}},
+ {t:'Save your work: add → commit', show:['A','B'], tags:{main:'B'}, head:'main', featName:'',
+  cap:'Your change travels through three places. Edit in the <b>working folder</b>, <b>git add</b> moves it to the <b>staging area</b>, <b>git commit</b> saves it as commit <b>B</b>.',
+  term:[['cmd','git status'],['err','modified:   client/src/pages/Login.jsx'],['cmd','git add client/src/pages/Login.jsx'],['cmd','git commit -m "Add login page"'],['ok','[main b72d014] Add login page'],['out',' 1 file changed, 24 insertions(+)']],
+  side:{zones:true, tip:'Run git status before git add. It is how you catch a .env file before it leaks your MongoDB password.'}},
+ {t:'Make a branch', show:['A','B'], tags:{main:'B',feat:'B'}, head:'feat', featName:'feature/signup',
+  cap:'A branch is just a movable label. <b>git switch -c</b> creates <b>feature/signup</b> pointing at <b>B</b> and moves HEAD onto it. Nothing is copied.',
+  term:[['cmd','git switch -c feature/signup'],['ok',"Switched to a new branch 'feature/signup'"],['cmd','git branch'],['out','* feature/signup\n  main']],
+  side:{tip:'Rule for your SIH team: nobody commits straight to main. One branch per feature or per person.'}},
+ {t:'Commit on the branch', show:['A','B','C'], tags:{main:'B',feat:'C'}, head:'feat', featName:'feature/signup',
+  cap:'New commit <b>C</b> lands on <b>feature/signup</b> only. <b>main</b> still points at <b>B</b>, so your half-done work cannot break the app on main.',
+  term:[['cmd','git add .'],['cmd','git commit -m "Add signup form"'],['ok','[feature/signup 4c0e8a2] Add signup form'],['cmd','git push -u origin feature/signup'],['ok',' * [new branch]  feature/signup -> feature/signup']],
+  side:{}},
+ {t:'Meanwhile, main moves on', show:['A','B','C','D'], tags:{main:'D',feat:'C'}, head:'main', featName:'feature/signup',
+  cap:'A teammate pushed commit <b>D</b> to main. You switch back and <b>git pull</b>. Now the two lines have <b>diverged</b>: each has a commit the other does not.',
+  term:[['cmd','git switch main'],['cmd','git pull'],['out','Updating b72d014..9e51d70\nFast-forward\n server/routes/notes.js | 12 ++++++'],['cmd','git log --oneline --graph --all'],['out','* 9e51d70 (HEAD -> main) Add notes route\n| * 4c0e8a2 (feature/signup) Add signup form\n|/\n* b72d014 Add login page']],
+  side:{}},
+ {t:'Merge: the clean case', show:['A','B','C','D','M'], tags:{main:'M',feat:'C'}, head:'main', featName:'feature/signup',
+  cap:'C and D touched <b>different files</b>, so Git combines them by itself and creates merge commit <b>M</b> with two parents. This is what happens most of the time.',
+  term:[['cmd','git merge feature/signup'],['ok',"Merge made by the 'ort' strategy."],['out',' client/src/pages/Signup.jsx | 40 +++++++++'],['cmd','git branch -d feature/signup'],['out','Deleted branch feature/signup (was 4c0e8a2).']],
+  side:{tip:'If main had not moved, Git would simply slide the label forward. That is called a fast-forward and makes no merge commit.'}},
+ {t:'Two people, same line', show:['A','B','C','D','M','E','F'], tags:{main:'F',feat:'E'}, head:'main', featName:'fix/button',
+  cap:'Now Priya changes the login button text on <b>fix/button</b> (commit <b>E</b>) while Arun changes the <b>same line</b> on main (commit <b>F</b>). Git cannot guess which one is right.',
+  term:[['note','# Arun on main:   <button>Sign in</button>'],['note','# Priya on fix/button: <button>Login now</button>'],['cmd','git log --oneline --graph --all'],['out','* 7d2a0f1 (HEAD -> main) Rename button to Sign in\n| * 3b9c4e8 (fix/button) Button says Login now\n|/\n*   c8e1b55 Merge branch feature/signup']],
+  side:{}},
+ {t:'Merge conflict!', show:['A','B','C','D','M','E','F','R'], conflict:'R', tags:{main:'F',feat:'E'}, head:'main', featName:'fix/button',
+  cap:'Git stops halfway and writes <b>both versions</b> into the file between markers. <b>HEAD</b> (blue) is your branch, main. The gold part is the branch you are merging in.',
+  term:[['cmd','git merge fix/button'],['out','Auto-merging client/src/pages/Login.jsx'],['err','CONFLICT (content): Merge conflict in client/src/pages/Login.jsx'],['err','Automatic merge failed; fix conflicts and then commit the result.'],['cmd','git status'],['err','both modified:   client/src/pages/Login.jsx']],
+  side:{file:conflictFile(0), tip:'Do not panic and do not delete the folder. Either fix it (next step) or run git merge --abort to go back.'}},
+ {t:'Resolve, commit, push', show:['A','B','C','D','M','E','F','R'], tags:{main:'R',feat:'E',remote:'R'}, head:'main', featName:'fix/button',
+  cap:'Edit the file to the final code, <b>delete all three marker lines</b>, then <b>git add</b> and <b>git commit</b>. Merge commit <b>R</b> is done. Test the app, then push.',
+  term:[['note','# Team agreed on "Login now", markers removed'],['cmd','git add client/src/pages/Login.jsx'],['cmd','git commit -m "Merge fix/button, keep Login now"'],['ok','[main e40f6a3] Merge fix/button, keep Login now'],['cmd','npm run dev   # test before you push!'],['cmd','git push origin main'],['ok','   7d2a0f1..e40f6a3  main -> main']],
+  side:{file:conflictFile(1), tip:'Search the project for "<<<<<<<" before pushing. A leftover marker breaks the build on Vercel.'}}
+];
+
+const svg=document.getElementById('graph'), term=document.getElementById('term'), side=document.getElementById('side');
+let cur=0, prevShow=[], timers=[], playing=null;
+
+function tag(x,y,label,cls){const w=label.length*7.6+16;return `<g class="tag ${cls}" transform="translate(${x},${y})"><rect x="${-w/2}" y="-11" width="${w}" height="22"></rect><text>${label}</text></g>`}
+function edgePath(p,c){const x1=X(C[p].c),y1=LANE[C[p].l],x2=X(C[c].c),y2=LANE[C[c].l];
+  if(y1===y2)return `M${x1+16} ${y1}L${x2-16} ${y2}`;
+  const mx=(x1+x2)/2;return `M${x1+12} ${y1}C${mx} ${y1} ${mx} ${y2} ${x2-14} ${y2}`}
+function drawGraph(s){
+  let h=`<line class="lane" x1="20" y1="${LANE.main}" x2="670" y2="${LANE.main}"/><text class="lanelabel" x="20" y="${LANE.main+30}">main</text>`;
+  if(s.featName)h+=`<line class="lane" x1="20" y1="${LANE.feat}" x2="670" y2="${LANE.feat}"/><text class="lanelabel" x="20" y="${LANE.feat+30}">${s.featName}</text>`;
+  s.show.forEach(id=>C[id].p.forEach(p=>{if(s.show.includes(p)){const fresh=!prevShow.includes(id);
+    h+=`<path class="edge ${C[id].l==='feat'||C[p].l==='feat'?'feat':''} ${fresh?'new':''}" d="${edgePath(p,id)}"/>`}}));
+  s.show.forEach(id=>{const k=C[id];let cls=k.merge?'merge':k.l;if(s.conflict===id)cls='conflict';
+    const fresh=!prevShow.includes(id);
+    h+=`<g class="node ${cls} ${fresh?'new':''}"><circle cx="${X(k.c)}" cy="${LANE[k.l]}" r="16"></circle><text x="${X(k.c)}" y="${LANE[k.l]}">${s.conflict===id?'?':id}</text></g>`});
+  const t=s.tags;
+  if(t.main){const k=C[t.main];h+=tag(X(k.c),LANE.main-34,'main','main'); if(s.head==='main')h+=tag(X(k.c),LANE.main-60,'HEAD','head');}
+  if(t.remote){const k=C[t.remote];h+=tag(X(k.c)-20,LANE.main+34,'origin/main','remote');}
+  if(t.feat&&s.featName){const k=C[t.feat];const y=k.l==='feat'?LANE.feat+34:LANE.main+34;
+    h+=tag(X(k.c),y,s.featName,'feat'); if(s.head==='feat')h+=tag(X(k.c),y+26,'HEAD','head');}
+  svg.innerHTML=h; prevShow=s.show.slice();
+}
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function typeTerm(lines){timers.forEach(clearTimeout);timers=[];term.innerHTML='';
+  if(reduce){term.innerHTML=lines.map(([k,s])=>`<div class="l-${k}">${esc(s)}</div>`).join('');return}
+  let delay=150;
+  lines.forEach(([k,s])=>{
+    const el=document.createElement('div');el.className='l-'+k;
+    if(k==='cmd'){timers.push(setTimeout(()=>{term.appendChild(el);let i=0;const cur=document.createElement('span');cur.className='cursor';
+      const tick=()=>{el.textContent=s.slice(0,++i);el.appendChild(cur);if(i<s.length)timers.push(setTimeout(tick,22));else timers.push(setTimeout(()=>cur.remove(),250))};tick()},delay));
+      delay+=s.length*22+380;}
+    else{timers.push(setTimeout(()=>{el.textContent=s;term.appendChild(el)},delay));delay+=260;}
+  });
+}
+function drawSide(s){let h='';
+  if(s.side.zones)h+=`<div class="zones" aria-label="Three areas"><div class="zone"><b>Working folder</b>you edit here</div><div class="zone"><b>Staging</b>after git add</div><div class="zone"><b>Repository</b>after git commit</div><span class="chip" id="chip" style="left:16.6%">Login.jsx</span></div>`;
+  if(s.side.file){const f=s.side.file;h+=`<div class="file"><div class="filehead"><span>${f.name}</span><span class="st ${f.ok?'ok':''}">${f.status}</span></div><pre class="code">${f.html}</pre></div>`;}
+  if(s.side.tip)h+=`<p class="tip">${s.side.tip}</p>`;
+  side.innerHTML=h;
+  if(s.side.zones&&!reduce){const chip=document.getElementById('chip');chip.style.transition='left .6s ease';
+    timers.push(setTimeout(()=>chip.style.left='50%',1900));timers.push(setTimeout(()=>chip.style.left='83.3%',3300));}
+  else if(s.side.zones){document.getElementById('chip').style.left='83.3%'}
+}
+const pips=document.getElementById('pips');
+S.forEach((s,i)=>{const b=document.createElement('button');b.className='pip'+(s.conflict?' bad':'');b.textContent=i+1;b.setAttribute('aria-label','Step '+(i+1)+': '+s.t);b.onclick=()=>{stop();go(i)};pips.appendChild(b)});
+function go(i){cur=i;const s=S[i];
+  prevShow = (i===0) ? [] : (go.last===i-1 ? S[i-1].show.slice() : s.show.slice());
+  go.last=i;
+  document.getElementById('stepno').textContent=`STEP ${i+1} / ${S.length}`;
+  document.getElementById('steptitle').textContent=s.t;
+  document.getElementById('caption').innerHTML=s.cap;
+  drawGraph(s);typeTerm(s.term);drawSide(s);
+  [...pips.children].forEach((p,j)=>{p.classList.toggle('on',j===i);p.setAttribute('aria-current',j===i?'step':'false')});
+  document.getElementById('prev').disabled=i===0;
+  document.getElementById('next').disabled=i===S.length-1;
+}
+function stop(){if(playing){clearInterval(playing);playing=null;document.getElementById('play').textContent='▶ Auto-play'}}
+document.getElementById('prev').onclick=()=>{stop();if(cur>0)go(cur-1)};
+document.getElementById('next').onclick=()=>{stop();if(cur<S.length-1)go(cur+1)};
+document.getElementById('play').onclick=function(){if(playing){stop();return}
+  this.textContent='❚❚ Pause';if(cur===S.length-1)go(0);
+  playing=setInterval(()=>{if(cur<S.length-1)go(cur+1);else stop()},7500)};
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'&&cur<S.length-1){stop();go(cur+1)}if(e.key==='ArrowLeft'&&cur>0){stop();go(cur-1)}});
+go(0);
+})();
+</script>
+
+</body>
+</html>
