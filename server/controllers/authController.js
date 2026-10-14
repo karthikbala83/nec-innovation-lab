@@ -5,7 +5,14 @@ const Session = require('../models/Session');
 const { send } = require('../services/mailer');
 
 // CLIENT_URL may list several origins; links in messages use the first one
-const clientUrl = () => (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, '');
+// Links in emails use the public site: PUBLIC_SITE_URL, else the custom domain in CLIENT_URL, else any public entry
+const clientUrl = () => {
+  const list = (process.env.CLIENT_URL || 'http://localhost:5173').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean)
+    .map((o) => (/^https?:\/\//.test(o) ? o : `https://${o}`));
+  const isPublic = (o) => !/localhost|127\.0\.0\.1/.test(o);
+  const custom = list.find((o) => isPublic(o) && !/\.(netlify\.app|onrender\.com|vercel\.app)$/.test(o));   // prefer the college/custom domain
+  return (process.env.PUBLIC_SITE_URL || custom || list.find(isPublic) || list[0]).replace(/\/+$/, '');
+};
 exports.clientUrl = clientUrl;
 
 // helper: sign a JWT that carries BOTH user id and session id

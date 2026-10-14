@@ -2,9 +2,14 @@
 // Interceptor attaches the JWT to every request automatically.
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-});
+// Accepts "https://api.example.com", ".../api" or ".../api/" — every route lives under /api.
+// (A bare host without /api once broke the live site, so normalise instead of trusting the env.)
+export const apiBase = (raw) => {
+  const url = String(raw || 'http://localhost:5000/api').trim().replace(/\/+$/, '');
+  return /\/api$/.test(url) ? url : `${url}/api`;
+};
+
+const api = axios.create({ baseURL: apiBase(import.meta.env.VITE_API_URL) });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');

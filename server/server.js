@@ -22,7 +22,9 @@ const app = express();
 app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
 // CLIENT_URL may list several origins: "https://lab.nandhaengg.org,https://nec-lab.netlify.app"
 // CLIENT_URL_PATTERN (optional regex) allows Netlify deploy previews, e.g. ^https://[a-z0-9-]+--nec-lab\.netlify\.app$
-const origins = (process.env.CLIENT_URL || '').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
+// Entries without a scheme ("nec-innovation-lab.saravonix.com") mean https:// — browsers always send the scheme.
+const origins = (process.env.CLIENT_URL || '').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean)
+  .map((o) => (/^https?:\/\//.test(o) ? o : `https://${o}`));
 const originPattern = process.env.CLIENT_URL_PATTERN ? new RegExp(process.env.CLIENT_URL_PATTERN) : null;
 app.use(cors({
   origin: (origin, cb) => cb(null, !origin || origins.includes(origin) || !!originPattern?.test(origin)),
