@@ -11,7 +11,8 @@ module.exports = (err, req, res, next) => {
     // reasons/errors: content-check and form-field details the client shows next to the form
     return res.status(err.status).json({ message: err.message, ...(err.reasons && { reasons: err.reasons }), ...(err.errors && { errors: err.errors }) });
   }
-  if (err.status === 502) return res.status(502).json({ message: err.message });   // GitHub hiccup
+  // Deliberate upstream / not-configured errors carry a message meant for the user
+  if ([502, 503, 504].includes(err.status)) return res.status(err.status).json({ message: err.message });
 
   console.error(err.stack);
   const body = { message: 'Server error' };
