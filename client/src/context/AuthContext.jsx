@@ -25,6 +25,21 @@ export function AuthProvider({ children }) {
   const signup = async (payload) => {
     const { data } = await api.post('/auth/signup', payload);
     saveAuth(data);
+    return data.user;
+  };
+
+  // "Continue with Google": Google's ID token -> our session (college Workspace only)
+  const googleLogin = async (credential) => {
+    const { data } = await api.post('/auth/google', { credential });
+    saveAuth(data);
+    return data.user;
+  };
+
+  // After editing the profile on /settings
+  const refreshUser = (next) => {
+    const merged = { ...user, ...next };
+    localStorage.setItem('user', JSON.stringify(merged));
+    setUser(merged);
   };
 
   const logout = async () => {
@@ -43,7 +58,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, markTourDone }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, markTourDone, googleLogin, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

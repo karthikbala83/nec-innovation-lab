@@ -27,6 +27,7 @@ const repoSnapshotSchema = new mongoose.Schema(
       createdAt: Date,
       pushedAt: Date,
       htmlUrl: String,
+      private: Boolean,
     },
     languages: { type: Map, of: Number },          // { JavaScript: 41230, CSS: 2210 } bytes
     stack: [String],                                 // detected: React, Express, MongoDB…

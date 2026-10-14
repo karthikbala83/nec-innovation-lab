@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema(
       match: [/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/, 'Invalid GitHub username'],
     },
     verified: { type: Boolean, default: false },   // admin checked the roll number
+    // Google Workspace sign-in (users.googleSub = Google's stable account id)
+    googleSub: { type: String, index: { unique: true, sparse: true } },
+    // Seeded demo account: never linked to a real Google sign-in
+    isDemo: { type: Boolean, default: false },
     // First-run app tour: the version the user finished or skipped (bump TOUR_VERSION in the client to show a new tour)
     tourVersion: { type: Number, default: 0 },
 
@@ -101,7 +105,11 @@ userSchema.methods.comparePassword = function (plain) {
 
 // Shape sent to the client after login/signup
 userSchema.methods.toAuthJSON = function () {
-  return { id: this._id, name: this.name, email: this.email, role: this.role, handle: this.handle, tourVersion: this.tourVersion || 0 };
+  return {
+    id: this._id, name: this.name, email: this.email, role: this.role, handle: this.handle, tourVersion: this.tourVersion || 0,
+    // Students who joined with Google still need department / batch / roll number
+    needsProfile: this.role === 'student' && !(this.profile?.batch && this.profile?.rollNo),
+  };
 };
 
 userSchema.methods.createResetToken = function (ttlMinutes = 15) {

@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { StatusBadge, Spinner, Avatar, errorText, timeAgo } from '../components/ui.jsx';
 import { SecretWarnings } from './LaunchPage.jsx';
 import ImageUpload from '../components/ImageUpload.jsx';
+import GithubTokenHelp from './GithubTokenHelp.jsx';
 
 const STEPS = ['Basics', 'Story', 'Proof & media', 'Team', 'Code', 'Submit'];
 const DEPARTMENTS = ['CSE', 'IT', 'AI&DS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'BME', 'Other'];
@@ -338,6 +339,8 @@ function CodeStep({ project, repoUrl }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [cached, setCached] = useState(null);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [token, setToken] = useState('');
 
   useEffect(() => {
     api.get(`/projects/${project._id}/snapshot`).then((r) => setSnap(r.data.snapshot)).catch(() => {});
@@ -347,11 +350,15 @@ function CodeStep({ project, repoUrl }) {
     setBusy(true);
     setError('');
     try {
-      const { data } = await api.post(`/projects/${project._id}/import`, null, { params: force ? { force: 1 } : {}, timeout: 90000 });
+      const body = isPrivate && token.trim() ? { githubToken: token.trim() } : null;
+      const { data } = await api.post(`/projects/${project._id}/import`, body, { params: force ? { force: 1 } : {}, timeout: 90000 });
       setSnap(data.snapshot);
       setCached(data.cached);
+      setToken('');   // used once; don't keep it around in the page
     } catch (err) {
-      setError(errorText(err, 'Import failed'));
+      const text = errorText(err, 'Import failed');
+      setError(text);
+      if (/private/i.test(text)) setIsPrivate(true);   // open the token instructions
     } finally {
       setBusy(false);
     }
@@ -364,15 +371,25 @@ function CodeStep({ project, repoUrl }) {
   return (
     <>
       <p>We read <a href={repoUrl} target="_blank" rel="noreferrer">{repoUrl.replace('https://github.com/', '')}</a> from GitHub: stack, who committed what, and a check for leaked keys. Read-only.</p>
+      <label className="check private-toggle">
+        <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} /> My repo is private
+      </label>
+      {isPrivate && (
+        <>
+          <GithubTokenHelp repo={repoUrl.replace('https://github.com/', '')} />
+          <input type="password" autoComplete="off" spellCheck={false} placeholder="github_pat_…" value={token}
+            onChange={(e) => setToken(e.target.value)} aria-label="GitHub read-only token" className="token-input" />
+        </>
+      )}
       <div className="actions">
-        <button onClick={() => run(false)} disabled={busy}>{busy ? 'Importing… (up to 30 s)' : snap ? 'Refresh import' : 'Import from GitHub'}</button>
+        <button onClick={() => run(false)} disabled={busy || (isPrivate && !token.trim())}>{busy ? 'Importing… (up to 30 s)' : snap ? 'Refresh import' : 'Import from GitHub'}</button>
         {snap && <button className="ghost" onClick={() => run(true)} disabled={busy}>Force re-import</button>}
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       {snap && (
         <div className="import-result">
           <p className="muted">
-            {cached ? 'Cached result' : 'Imported'} · commit <code>{snap.sha?.slice(0, 7)}</code> on {snap.defaultBranch} · {timeAgo(snap.fetchedAt)}
+            {snap.meta?.private && <span className="chip">🔒 private repo</span>} {cached ? 'Cached result' : 'Imported'} · commit <code>{snap.sha?.slice(0, 7)}</code> on {snap.defaultBranch} · {timeAgo(snap.fetchedAt)}
             {snap.durationMs ? ` · ${(snap.durationMs / 1000).toFixed(1)} s` : ''}
           </p>
           <div className="chips">{(snap.stack || []).map((s) => <span key={s} className="chip soft">{s}</span>)}</div>

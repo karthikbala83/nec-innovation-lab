@@ -29,6 +29,7 @@ import SeasonPage from './seasons/SeasonPage.jsx';
 import JudgePage from './seasons/JudgePage.jsx';
 import AdminSeasons from './admin/AdminSeasons.jsx';
 import Reports from './admin/Reports.jsx';
+import Settings from './pages/Settings.jsx';
 import api from './api/axios';
 import Tour from './tour/Tour.jsx';
 import { stepsFor, TOUR_VERSION } from './tour/tourSteps.js';
@@ -104,6 +105,7 @@ export default function App() {
               {user.role === 'admin' && <NavLink to="/admin" data-tour="nav-admin">Admin</NavLink>}
               {user.handle && ['student', 'faculty'].includes(user.role) && <NavLink to={`/u/${user.handle}`} data-tour="nav-profile">Profile</NavLink>}
               {['student', 'admin'].includes(user.role) && <NavLink to="/projects/new" className="nav-cta" data-tour="nav-launch">＋ Launch</NavLink>}
+              <NavLink to="/settings" data-tour="nav-settings">Account</NavLink>
               <button className="link-btn" onClick={logout}>Logout</button>
             </>
           ) : (
@@ -142,6 +144,7 @@ export default function App() {
           <Route path="/admin/seasons" element={<Protected roles={['admin']}><AdminSeasons /></Protected>} />
           <Route path="/admin/reports" element={<Protected roles={['admin']}><Reports /></Protected>} />
           <Route path="/inbox" element={<Protected><Inbox /></Protected>} />
+          <Route path="/settings" element={<Protected><Settings /></Protected>} />
           <Route path="/messages/:id" element={<SenderThread />} />
           <Route path="/admin" element={<Protected roles={['admin']}><Admin /></Protected>} />
           <Route path="/admin/people" element={<Protected roles={['admin']}><People /></Protected>} />

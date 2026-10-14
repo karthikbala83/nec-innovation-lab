@@ -1,3 +1,8 @@
+// Demo passwords are NOT in this repo (it is public): set SEED_PASSWORD, or the seed
+// generates a random one and writes it to server/.seed-credentials.txt (git-ignored).
+// Demo accounts use demo-… addresses and isDemo:true, so a real student's Google
+// sign-in can never land in one.
+// Safety: on a non-local database you must confirm the wipe: SEED_CONFIRM=<database name>
 // Run: npm run seed      (WIPES users, sessions, notes, projects, snapshots, metrics,
 //                        backings, follows, comments, updates, settings, Lotus, intros,
 //                        likes, feedback & requests, seasons)
@@ -6,6 +11,8 @@
 // are fixtures (no GitHub calls), so seeding works offline.
 require('dotenv').config();
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const User = require('../models/User');
 const Note = require('../models/Note');
 const Session = require('../models/Session');
@@ -30,7 +37,9 @@ const Season = require('../seasons/Season');
 const SeasonEntry = require('../seasons/SeasonEntry');
 
 const DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'nandhaengg.org').split(',')[0].trim();
-const mail = (local) => `${local}@${DOMAIN}`;
+// Demo people get demo-… addresses so they can't collide with a real student's account
+const mail = (local) => `demo-${local}@${DOMAIN}`;
+const PASSWORD = process.env.SEED_PASSWORD || crypto.randomBytes(12).toString('base64url');
 const DAY = 864e5;
 const daysAgo = (n) => new Date(Date.now() - n * DAY);
 
@@ -86,7 +95,13 @@ const snapshotFor = (project, members, spec) => {
 };
 
 const run = async () => {
+  const target = require('mongoose').connection;
   await require('../config/db').connect();
+  const local = /^mongodb:\/\/(127\.0\.0\.1|localhost|mongo)(:|\/)/.test(process.env.MONGO_URI || '');
+  if (!local && process.env.SEED_CONFIRM !== target.name) {
+    console.error(`Refusing to wipe remote database "${target.name}". If you really mean it: SEED_CONFIRM=${target.name} npm run seed`);
+    process.exit(1);
+  }
   await Promise.all([
     User.deleteMany(), Note.deleteMany(), Session.deleteMany(),
     Project.deleteMany(), RepoSnapshot.deleteMany(), MetricDaily.deleteMany(),
@@ -97,11 +112,11 @@ const run = async () => {
     .map((M) => M.syncIndexes()));
   await Setting.get();   // default Lab Score weights
 
-  await User.create({ name: 'Portal Admin', email: mail('innovationlab.admin'), password: 'admin123', role: 'admin', verified: true });
+  await User.create({ name: 'Portal Admin', email: mail('innovationlab.admin'), password: PASSWORD, role: 'admin', verified: true, isDemo: true });
 
   const [drRamesh, drLakshmi] = await User.create([
-    { name: 'Dr. R. Ramesh', email: mail('ramesh.cse'), password: 'faculty123', role: 'faculty', verified: true, profile: { department: 'CSE' } },
-    { name: 'Dr. S. Lakshmi', email: mail('lakshmi.ece'), password: 'faculty123', role: 'faculty', verified: true, profile: { department: 'ECE' } },
+    { name: 'Dr. R. Ramesh', email: mail('ramesh.cse'), password: PASSWORD, role: 'faculty', verified: true, isDemo: true, profile: { department: 'CSE' } },
+    { name: 'Dr. S. Lakshmi', email: mail('lakshmi.ece'), password: PASSWORD, role: 'faculty', verified: true, isDemo: true, profile: { department: 'ECE' } },
   ]);
 
   const people = [
@@ -116,7 +131,8 @@ const run = async () => {
   const students = await User.create(people.map(([name, local, department, gh, skills], i) => ({
     name,
     email: mail(local),
-    password: 'student123',
+    password: PASSWORD,
+    isDemo: true,
     githubUsername: gh,
     verified: i < 5,
     profile: { department, year: 3, batch: '2023-2027', rollNo: `23${department}${String(101 + i)}`, skills },
@@ -124,7 +140,7 @@ const run = async () => {
   const [arun, priya, karthik, divya, suresh, meena, vignesh] = students;
   // A few more students so backer counts look like a real campus
   const crowd = await User.create(['Anitha', 'Bala', 'Charan', 'Deepa', 'Ezhil', 'Farhan', 'Gokul', 'Harini'].map((name, i) => ({
-    name: `${name} ${String.fromCharCode(65 + i)}`, email: mail(`${name.toLowerCase()}.${i + 1}`), password: 'student123',
+    name: `${name} ${String.fromCharCode(65 + i)}`, email: mail(`${name.toLowerCase()}.${i + 1}`), password: PASSWORD, isDemo: true,
     profile: { department: ['CSE', 'IT', 'ECE', 'EEE'][i % 4], year: 2, batch: '2024-2028' },
   })));
   const m = (u, role) => ({ user: u._id, githubUsername: u.githubUsername, role });
@@ -331,7 +347,7 @@ const run = async () => {
 
   // ---- P2: a recruiter (invited by the placement cell) and one intro request ----
   const recruiter = await User.create({
-    name: 'Meera Iyer', email: 'meera.iyer@kaveri-labs.example', password: 'recruiter123', role: 'recruiter', verified: true,
+    name: 'Meera Iyer', email: 'meera.iyer@kaveri-labs.example', password: PASSWORD, role: 'recruiter', verified: true, isDemo: true,
     profile: { company: 'Kaveri Software Labs (demo)' },
   });
   await IntroRequest.create([
@@ -415,13 +431,18 @@ const run = async () => {
   // ---- A few notes so the starter's admin dashboard still has data ----
   await Note.create(students.slice(0, 3).map((s) => ({ user: s._id, title: `${s.name}'s demo-day checklist`, tags: ['project'] })));
 
+  if (!process.env.SEED_PASSWORD) {
+    const file = path.join(__dirname, '..', '.seed-credentials.txt');
+    fs.writeFileSync(file, `Demo accounts for database "${target.name}" (seeded ${new Date().toISOString()})\nAll demo accounts: password ${PASSWORD}\nAdmin: ${mail('innovationlab.admin')}\nRecruiter: meera.iyer@kaveri-labs.example\nDo not commit or share this file.\n`, { mode: 0o600 });
+  }
   console.log(`Seeded on @${DOMAIN}:
-  admin    ${mail('innovationlab.admin')} / admin123
-  faculty  ${mail('ramesh.cse')}, ${mail('lakshmi.ece')} / faculty123
-  students ${mail('arun.k')}, ${mail('priya.s')}, ${mail('karthik.m')}, ${mail('divya.r')}… / student123
+  admin    ${mail('innovationlab.admin')}
+  faculty  ${mail('ramesh.cse')}, ${mail('lakshmi.ece')}
+  students ${mail('arun.k')}, ${mail('priya.s')}, ${mail('karthik.m')}, ${mail('divya.r')}…
+  password ${process.env.SEED_PASSWORD ? '(the SEED_PASSWORD you set)' : 'random — see server/.seed-credentials.txt'}
   3 published projects + 1 waiting in Dr. Ramesh's review queue
   P1: backers, follows, comments (1 reported), updates, 1 pending pilot, Lab Scores computed
-  P2: Lotus (mock) for 5 students, 2 vivas; recruiter meera.iyer@kaveri-labs.example / recruiter123;
+  P2: Lotus (mock) for 5 students, 2 vivas; recruiter meera.iyer@kaveri-labs.example;
       2 intro requests; the queued project is flagged as 70% identical to CampusBus Live
   Likes on all 3; 4 feedback + 1 project request (with a reply) delivered; 1 message held for moderation
   P3: seasons — NEC Hackathon 2026 (results), Odd Sem 2026 Demo Day (open, 2 entries), SIH 2027 Internal Round (upcoming)`);

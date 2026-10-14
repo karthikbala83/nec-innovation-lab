@@ -41,7 +41,7 @@ Rule of thumb: **routes stay thin, controllers do the work, models own the data 
 cd server
 cp .env.example .env        # fill MONGO_URI (Atlas) and JWT_SECRET
 npm install
-npm run seed                # demo users: admin@demo.com/admin123, arun@demo.com/student123
+SEED_PASSWORD=pick-one npm run seed   # demo users (demo-…@<domain>); without SEED_PASSWORD a random one goes to server/.seed-credentials.txt
 npm run dev                 # http://localhost:5000
 
 # 2. Frontend (new terminal)

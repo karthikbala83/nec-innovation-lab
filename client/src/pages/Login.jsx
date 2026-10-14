@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import gsap from 'gsap';
 import { useAuth } from '../context/AuthContext.jsx';
+import GoogleButton, { googleEnabled } from '../components/GoogleButton.jsx';
 
 // ---------------------------------------------------------------
 // ANIMATION TEASER (full GSAP + Lottie session coming next time)
@@ -11,7 +12,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 // Notice: animation never blocks logic — it decorates it.
 // ---------------------------------------------------------------
 export default function Login() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
   const cardRef = useRef(null);
@@ -39,11 +40,24 @@ export default function Login() {
     });
   };
 
+  const next = (u) => (u.needsProfile ? '/settings?welcome=1'
+    : location.state?.from || (u.role === 'recruiter' ? '/talent' : '/me/projects'));
+
+  const onGoogle = async (credential) => {
+    setError('');
+    try {
+      nav(next(await googleLogin(credential)));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Google sign-in failed');
+      shake();
+    }
+  };
+
   const submit = async () => {
     setError('');
     try {
       const u = await login(email, password);
-      nav(location.state?.from || (u.role === 'recruiter' ? '/talent' : '/me/projects'));
+      nav(next(u));
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
       shake();                       // feel the failure, not just read it
@@ -54,6 +68,12 @@ export default function Login() {
     <div className="card auth-card" ref={cardRef}>
       <h2>Login</h2>
       {error && <p className="error">{error}</p>}
+      {googleEnabled && (
+        <>
+          <GoogleButton onCredential={onGoogle} text="signin_with" />
+          <p className="or-divider"><span>or with email &amp; password</span></p>
+        </>
+      )}
       <input placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <input type="password" placeholder="Password" value={password}
              onChange={(e) => setPassword(e.target.value)}

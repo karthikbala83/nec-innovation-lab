@@ -12,12 +12,12 @@ Read it once end to end when you join; come back to the section you need.
 | Piece | Where (UAT / free tier) | Where (college server) | Code |
 |---|---|---|---|
 | Web app (React) | Netlify | `web` container (nginx) | `client/` |
-| API (Express) | Railway | `api` container | `server/` |
+| API (Express) | Render | `api` container | `server/` |
 | Database | MongoDB Atlas, db `nec_innovation_lab` | `mongo` container + volume | `server/**/*.js` models |
 | Images | S3 `s3://nec-innovation-lab/students-projects/` | same | `server/services/s3.js` |
 | Email | Resend | same | `server/services/mailer.js` |
 | Lotus questions | Saravonix Lotus API | same | `server/services/lotusClient.js` (client only) |
-| HTTPS / domain | Netlify + Railway | `caddy` container | `deploy/Caddyfile` |
+| HTTPS / domain | Netlify + Render | `caddy` container | `deploy/Caddyfile` |
 
 Inside the API, every feature is a folder: `projects/`, `feed/`, `community/`, `feedback/`, `lotus/`, `seasons/`, `reports/`…
 Routes are thin; controllers do the work; models hold the rules. Read `CLAUDE.md` and `docs/PORTAL_SPEC.md` before changing anything.
@@ -27,7 +27,7 @@ Routes are thin; controllers do the work; models hold the rules. Read `CLAUDE.md
 1. `git switch main && git pull` → `git switch -c feature/<short-name>`
 2. Code + run locally (`docs/STARTER.md`). Run `cd server && npm test`.
 3. Push, open a PR into `main`. CI must pass (server tests, client build, no `.env` committed). One maintainer review.
-4. Merge → Netlify and Railway deploy `main` automatically (watch the deploy logs).
+4. Merge → Netlify and Render deploy `main` automatically (watch the deploy logs).
 5. Smoke test on UAT: open the feed, open a project, log in as a test user. Check `https://<api>/api/health` → `"ok":true`.
 
 **Never** commit `.env`, `.env.docker`, keys or passwords. If it happens: tell a faculty owner, rotate the key (section 7), then remove it from git.
@@ -51,15 +51,15 @@ Routes are thin; controllers do the work; models hold the rules. Read `CLAUDE.md
 
 - **API:** `GET /api/health` → `{"ok":true,"db":"nec_innovation_lab"}`. `503` means the database is not connected.
 - **Daily checks** (live URLs, repo refresh, Lab Scores) run inside the API once a day. Admin → Lab Score & moderation shows *Last run*; use *Run daily checks now* if it is older than a day.
-- **Railway** → service → Deployments / Metrics. **Netlify** → Deploys. **Atlas** → Metrics (storage, connections).
+- **Render** → service → Events / Logs / Metrics. **Netlify** → Deploys. **Atlas** → Metrics (storage, connections).
 - College server: `docker compose ps` (all `healthy`), `docker compose logs --tail=100 api`.
 
 ## 5. When something breaks
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Site loads, but every page says "Could not load" | API down or CORS | Open `/api/health`. If down: Railway logs / `docker compose logs api`. If up: `CLIENT_URL` must list the exact site URL (no trailing slash). |
-| `/api/health` → 503 | DB unreachable | Atlas: Network Access must allow the API's IP (`0.0.0.0/0` for Railway); password changed? College server: `docker compose ps mongo`. |
+| Site loads, but every page says "Could not load" | API down or CORS | Open `/api/health`. If down: Render logs / `docker compose logs api`. If up: `CLIENT_URL` must list the exact site URL (no trailing slash). |
+| `/api/health` → 503 | DB unreachable | Atlas: Network Access must allow the API's IP (Render's outbound IPs or `0.0.0.0/0`); password changed? College server: `docker compose ps mongo`. |
 | Students can't sign up | Wrong `ALLOWED_EMAIL_DOMAIN` | Must be `nandhaengg.org` (comma-separate extra domains). |
 | No emails (codes, alerts, resets) | Resend key / domain | Resend dashboard → Logs. `MAIL_FROM` must use a **verified** domain. Visitors can't send feedback until this works. |
 | GitHub import: "rate limit reached" | No / expired `GITHUB_TOKEN` | Create a fine-grained read-only token (public repos), set it, redeploy. |
@@ -70,7 +70,7 @@ Routes are thin; controllers do the work; models hold the rules. Read `CLAUDE.md
 | Someone reports a copied project | — | Mentor sees the duplicate-check notice on the review queue / project page. Talk to the team first. |
 | A season entry is wrong | Team entered the wrong track | While entries are open the team can withdraw and re-enter; after that an admin edits it in the database. |
 
-**Rollback:** Railway/Netlify → Deployments → *Redeploy* the last good deploy. College server: `git checkout <last-good-commit> && docker compose --env-file .env.docker up -d --build`.
+**Rollback:** Render/Netlify → Deployments → *Redeploy* the last good deploy. College server: `git checkout <last-good-commit> && docker compose --env-file .env.docker up -d --build`.
 
 ## 6. Backups & restore
 
@@ -95,11 +95,11 @@ Routes are thin; controllers do the work; models hold the rules. Read `CLAUDE.md
 Before the senior maintainers graduate:
 
 1. Add the new maintainers to the GitHub repo (Maintain role) and to `.github/CODEOWNERS` (PR).
-2. Transfer or share access — **always to a college-owned account, not a personal one**: GitHub org, Railway project, Netlify site, Atlas project, AWS IAM (the S3 bucket), Resend team, domain DNS (college IT).
+2. Transfer or share access — **always to a college-owned account, not a personal one**: GitHub org, Render service, Netlify site, Atlas project, AWS IAM (the S3 bucket), Resend team, domain DNS (college IT).
 3. Walk the new maintainers through this runbook and one full deploy + rollback.
 4. Remove the leaving students' access everywhere above, then rotate every secret in section 7.
 5. Update the names at the top of this file.
 
 ## 9. Moving from free tiers to the college server
 
-See `docs/DEPLOY.md` → *College server (Docker)*. Order: take an Atlas `mongodump` → bring up Docker → `mongorestore` into it → point DNS at the server → watch for a day → switch off Railway/Netlify.
+See `docs/DEPLOY.md` → *College server (Docker)*. Order: take an Atlas `mongodump` → bring up Docker → `mongorestore` into it → point DNS at the server → watch for a day → switch off Render/Netlify.

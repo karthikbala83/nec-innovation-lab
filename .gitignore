@@ -6,3 +6,4 @@ build/
 *.log
 .env.docker
 backups/
+.seed-credentials.txt

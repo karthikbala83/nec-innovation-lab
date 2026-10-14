@@ -3,11 +3,11 @@
 | Part | Service | From |
 |---|---|---|
 | Frontend (React) | **Netlify** | `client/` — config in `netlify.toml` |
-| API (Express) | **Railway** | `server/` — config in `server/railway.json` |
+| API (Express) | **Render** | `server/` — blueprint in `render.yaml` |
 | Database | **MongoDB Atlas** | database `nec_innovation_lab` |
 | Media (images) | **AWS S3** | `s3://nec-innovation-lab/students-projects/` |
 
-Order matters: **S3 → Atlas → Railway → Netlify → back to Railway** (CORS needs the Netlify URL).
+Order matters: **S3 → Atlas → Render → Netlify → back to Render** (CORS needs the site URL).
 
 ---
 
@@ -44,7 +44,7 @@ Images on launch pages must be readable by anyone. Choose **one**:
     }]
   }
   ```
-- **Better (recommended for production):** keep the bucket fully private, create a **CloudFront** distribution with Origin Access Control on the bucket, and set `S3_PUBLIC_BASE_URL=https://<dxxxx>.cloudfront.net` on Railway. Faster in India and no public bucket.
+- **Better (recommended for production):** keep the bucket fully private, create a **CloudFront** distribution with Origin Access Control on the bucket, and set `S3_PUBLIC_BASE_URL=https://<dxxxx>.cloudfront.net` on Render. Faster in India and no public bucket.
 
 ### 1c. IAM user for the API (IAM → Users → Create user, no console access)
 Attach this inline policy — it can only **write** into the project folder, nothing else:
@@ -58,66 +58,49 @@ Attach this inline policy — it can only **write** into the project folder, not
   }]
 }
 ```
-Create an access key (type "Application running outside AWS"). Keep the key ID + secret for Railway. Note the bucket's **region** (Bucket → Properties), e.g. `ap-south-1` (Mumbai).
+Create an access key (type "Application running outside AWS"). Keep the key ID + secret for Render. Note the bucket's **region** (Bucket → Properties), e.g. `ap-south-1` (Mumbai).
 
 ---
 
 ## 2. MongoDB Atlas
 
 1. **Database Access** → a user with *readWrite* on `nec_innovation_lab` only (not Atlas admin). Use a long random password.
-2. **Network Access** → Railway's outbound IPs change, so add `0.0.0.0/0` (allow from anywhere). The strong password is what protects it. (Railway Pro offers static egress IPs if the college wants to lock this down.)
+2. **Network Access** → add Render's outbound IPs (Render → service → *Outbound IP addresses*), or `0.0.0.0/0` (allow from anywhere) with a strong DB password.
 3. **Connect → Drivers** → copy the `mongodb+srv://…` string. The database name does **not** need to be in it: we set `MONGO_DB_NAME=nec_innovation_lab`.
 
 UAT has been seeded (demo users + 4 projects). **Never run `npm run seed` against production once real students sign up — it wipes the collections.**
 
 ---
 
-## 3. Railway (API)
+## 3. Render (API) — live: https://nec-innovation-lab.onrender.com
 
-1. railway.com → **New Project → Deploy from GitHub repo** → `karthikbala83/nec-innovation-lab`.
-2. Service **Settings**:
-   - **Root Directory:** `server`
-   - **Watch paths:** `server/**` (so client-only commits don't redeploy the API)
-   - Builder/start/health check come from `server/railway.json` (`node server.js`, health check `/api/health`).
-3. **Variables** (Service → Variables → Raw editor):
+1. render.com → **New → Web Service** → connect `karthikbala83/nec-innovation-lab` (or **New → Blueprint** and pick `render.yaml`).
+2. Settings: **Root Directory** `server` · **Build** `npm ci --omit=dev` · **Start** `node server.js` · **Health Check Path** `/api/health` · **Auto-Deploy: On** for branch `main`.
+3. **Environment** (Render → Environment):
    ```
    NODE_ENV=production
    MONGO_URI=mongodb+srv://<user>:<password>@nandha-cluster.u5al8ih.mongodb.net/?appName=nandha-cluster
    MONGO_DB_NAME=nec_innovation_lab
-   JWT_SECRET=<64+ random characters — see below>
+   JWT_SECRET=<64+ random characters>
    JWT_EXPIRES_IN=1d
-   CLIENT_URL=https://<your-site>.netlify.app
-   CLIENT_URL_PATTERN=^https://[a-z0-9-]+--<your-site>\.netlify\.app$
+   CLIENT_URL=https://nec-innovation-lab.saravonix.com,https://nec-innovation-lab.netlify.app
+   PUBLIC_SITE_URL=https://nec-innovation-lab.saravonix.com
    ALLOWED_EMAIL_DOMAIN=nandhaengg.org
-   GITHUB_TOKEN=<fine-grained token, public repos read-only>
-   GITHUB_CACHE_MINUTES=30
-   JOBS_ENABLED=true
+   GOOGLE_CLIENT_ID=<same value as Netlify's VITE_GOOGLE_CLIENT_ID>
+   GITHUB_TOKEN=<fine-grained token, public repositories read-only>
+   RESEND_API_KEY=<send-only key>
+   MAIL_FROM=NEC Innovation Lab <noreply@saravonix.com>
    AWS_REGION=ap-south-1
    AWS_ACCESS_KEY_ID=<from step 1c>
    AWS_SECRET_ACCESS_KEY=<from step 1c>
    S3_BUCKET=nec-innovation-lab
    S3_PREFIX=students-projects/
-   S3_PUBLIC_BASE_URL=
-   UPLOAD_MAX_MB=5
-   LOTUS_API_URL=<from Saravonix>
-   LOTUS_API_KEY=<from Saravonix>
-   LOTUS_MONTHLY_QUOTA=500
-   RESEND_API_KEY=<from resend.com → API Keys>
-   MAIL_FROM=NEC Innovation Lab <noreply@<your-verified-domain>>
+   LOTUS_MOCK=true            # until Saravonix issues LOTUS_API_URL + LOTUS_API_KEY
    ```
-   **Resend:** add and verify a domain (resend.com → Domains → add DNS records). Until then, the test sender `onboarding@resend.dev` only delivers to the email you signed up to Resend with — fine for a smoke test, not for students or visitors. Emails sent: visitor 6-digit codes, new feedback/request alerts to the project owner, replies both ways, password reset, recruiter invites.
-   Until Saravonix issues the Lotus URL/key, add `LOTUS_MOCK=true` so the Lotus pages work on UAT (questions are labelled `[MOCK]`). Remove it for production.
-   Do **not** set `PORT` — Railway provides it.
-   Generate the JWT secret locally:
-   ```bash
-   node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-   ```
-4. **Settings → Networking → Generate Domain** → e.g. `https://nec-innovation-lab-api.up.railway.app`.
-5. Check: open `https://<api-domain>/api/health` → `{"ok":true,"db":"nec_innovation_lab",…}`.
+   Always write `https://` in `CLIENT_URL` (the API now adds it if missing, but be explicit). Do **not** set `PORT` — Render provides it.
+4. Check: `https://nec-innovation-lab.onrender.com/api/health` → `{"ok":true,"db":"nec_innovation_lab"}`.
 
-GitHub token: github.com → Settings → Developer settings → Fine-grained tokens → *Public repositories (read-only)*, no extra permissions. Without it, imports are limited to ~1 per hour.
-
----
+**Render free tier sleeps after ~15 minutes idle**: the first request then takes ~50 s, and the in-app daily checks only run while it is awake. For the pilot either upgrade to the *Starter* instance (always on) or add a free uptime pinger hitting `/api/health` every 10 minutes. Atlas Network Access must allow Render's outbound IPs (Render → service → *Outbound IP addresses*), or `0.0.0.0/0` with a strong DB password.
 
 ## 4. Netlify (frontend)
 
@@ -125,22 +108,31 @@ GitHub token: github.com → Settings → Developer settings → Fine-grained to
 2. Build settings are read from `netlify.toml` (base `client`, build `npm ci && npm run build`, publish `dist`, SPA redirect, security headers). Leave the form as detected.
 3. **Site configuration → Environment variables:**
    ```
-   VITE_API_URL=https://<api-domain>.up.railway.app/api
+   VITE_API_URL=https://nec-innovation-lab.onrender.com/api
+   VITE_GOOGLE_CLIENT_ID=<Google OAuth web client id>
    VITE_COLLEGE_DOMAIN=nandhaengg.org
    ```
 4. Deploy. Note the site URL (rename it under *Site configuration → Change site name*, e.g. `nec-innovation-lab.netlify.app`).
-5. **Back on Railway**, set `CLIENT_URL` (and `CLIENT_URL_PATTERN`) to that exact Netlify URL → Railway redeploys. Add the same URL to the S3 CORS list (step 1a).
+5. **Back on Render**, put the site URL(s) in `CLIENT_URL` (with `https://`) → Render redeploys. Add the same URL to the S3 CORS list (step 1a).
 
 `VITE_*` values are baked in at build time — after changing them, trigger *Deploys → Trigger deploy → Clear cache and deploy*.
 
 ---
+
+## 4b. Google sign-in (college Google Workspace)
+
+1. Google Cloud console → APIs & Services → Credentials → **OAuth client ID (Web application)**.
+2. **Authorised JavaScript origins:** `https://nec-innovation-lab.saravonix.com`, `https://nec-innovation-lab.netlify.app`, `http://localhost:5173`. (No redirect URIs needed — the button uses a popup.)
+3. OAuth consent screen: *Internal* (only the college Workspace) is simplest.
+4. Put the client ID in Netlify (`VITE_GOOGLE_CLIENT_ID`, then *Clear cache and deploy*) **and** Render (`GOOGLE_CLIENT_ID`).
+5. The API only accepts verified emails on `ALLOWED_EMAIL_DOMAIN` whose Google Workspace domain matches — personal Gmail accounts are refused. First sign-in creates a student account and asks for department, batch and roll number. Admins promote faculty in *Admin → People*.
 
 ## 5. Smoke test after deploy
 
 1. `https://<site>.netlify.app` → feed shows 3 projects; open one, refresh the page (SPA redirect works).
 2. Recruiter flow: Admin → People → *Invite a recruiter* → open the set-password link in a private window → Talent → Request intro → back as admin: Admin → Intro requests → Forward.
 3. Likes & feedback: open a project in a private window (no login) → ♡ Like → *Give feedback* → enter name/email/mobile → code arrives by email → send. Log in as the owner → Inbox → reply; the visitor gets an email with a private link to reply back. Admin → Feedback moderation shows held messages.
-4. Log in as the seeded admin → **Admin → Lab Score & moderation → Run daily checks now** → "1/1 live URLs up".
+4. Log in as the admin → **Admin → Lab Score & moderation → Run daily checks now** → "1/1 live URLs up".
 3. Log in as a seeded student → My projects → Edit → *Proof & media* → **Upload thumbnail** → image appears; its URL starts with your S3 / CloudFront base.
 4. Sign up with a `@gmail.com` address → refused; with `@nandhaengg.org` → works.
 5. `/leaderboards`, `/u/arun-k` (QR) load without login.
@@ -149,7 +141,7 @@ GitHub token: github.com → Settings → Developer settings → Fine-grained to
 
 ## 6. Before real students use it
 
-- [ ] **Change every seeded password** (admin123 / faculty123 / student123 are public in this repo) — or delete the demo users and promote real faculty via *Admin → People*.
+- [ ] Demo accounts: the seed never puts passwords in the repo (it uses `SEED_PASSWORD` or a random one written to the git-ignored `server/.seed-credentials.txt`). For real users, start from a clean database or remove the `demo-…` accounts.
 - [ ] Password reset emails are **not sent yet** (the link is only logged on the server). Add an email provider (SES / Resend) before go-live, or reset passwords via admin.
 - [ ] Custom domain: Netlify → Domain management → add `innovation.nandha.ac.in`; college IT adds the CNAME. Then add it to `CLIENT_URL` and the S3 CORS list.
 - [ ] Atlas: enable backups (M10+) or schedule `mongodump`.
@@ -162,12 +154,12 @@ Ask college IT for two DNS records:
 | Record | Name | Points to |
 |---|---|---|
 | CNAME | `innovation` | `<your-site>.netlify.app` (Netlify → Domain management → *Add a domain* shows the exact target) |
-| CNAME | `api.innovation` | the target Railway shows under Service → Settings → Networking → *Custom domain* |
+| CNAME | `api.innovation` | the target Render shows under Service → Settings → *Custom Domains* |
 
 Then:
 1. Netlify adds the domain and issues HTTPS automatically. Set it as the *primary* domain.
-2. Railway: add `api.innovation.nandha.ac.in` as a custom domain (HTTPS is automatic).
-3. Railway variables: `CLIENT_URL=https://innovation.nandha.ac.in` (keep the netlify.app URL too, comma-separated, during the switch).
+2. Render: add `api.innovation.nandha.ac.in` as a custom domain (HTTPS is automatic).
+3. Render variables: `CLIENT_URL=https://innovation.nandha.ac.in` (keep the netlify.app URL too, comma-separated, during the switch).
 4. Netlify variables: `VITE_API_URL=https://api.innovation.nandha.ac.in/api` → *Clear cache and deploy*.
 5. S3 CORS: add `https://innovation.nandha.ac.in`. Resend: verify the domain so `MAIL_FROM=…@innovation.nandha.ac.in` works.
 6. Profile QR codes use the address the page is opened on, so they switch to the college domain on their own. Ask students to download their QR again once the domain is live.

@@ -215,7 +215,13 @@ exports.importRepo = async (req, res) => {
   if (!canEdit(project, req.user)) return res.status(403).json({ message: 'Only the team can import the repo' });
 
   try {
-    const { snapshot, cached } = await importRepo(project, { force: req.query.force === '1' });
+    // Private repo: the student's own fine-grained, read-only token. Used for this one import
+    // and dropped — never saved, logged or sent back.
+    const token = String(req.body?.githubToken || '').trim();
+    if (token && !/^(github_pat_[A-Za-z0-9_]{20,}|ghp_[A-Za-z0-9]{30,})$/.test(token)) {
+      return res.status(400).json({ message: 'That does not look like a GitHub token (it starts with github_pat_)' });
+    }
+    const { snapshot, cached } = await importRepo(project, { force: req.query.force === '1' || !!token, token: token || undefined });
     recomputeSoon(project._id);
     res.json({ cached, snapshot: snapshotForTeam(snapshot) });
   } catch (err) {

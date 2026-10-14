@@ -22,6 +22,9 @@ export default function MyProjects() {
         <h2>My projects</h2>
         {['student', 'admin'].includes(user.role) && <Link className="btn" to="/projects/new">+ Launch a project</Link>}
       </div>
+      {user.needsProfile && (
+        <p className="banner status-in_review">Add your department, batch and roll number in <Link to="/settings?welcome=1">Account</Link> so your projects show up in the right place.</p>
+      )}
       {user.handle && <p className="muted">Your public profile: <Link to={`/u/${user.handle}`}>/u/{user.handle}</Link> (has your resume QR) · <Link to="/intros">Intro requests from companies</Link></p>}
       {!projects && <Spinner />}
       {projects?.length === 0 && (

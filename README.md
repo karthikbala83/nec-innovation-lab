@@ -30,18 +30,19 @@ Full product spec: **[docs/PORTAL_SPEC.md](docs/PORTAL_SPEC.md)**
 | `CONTRIBUTING.md` | How students contribute (branches, PRs, reviews) |
 | `CLAUDE.md` | Conventions for AI-assisted coding in this repo |
 | `docs/RUNBOOK.md` | Operating the portal: calendar, incidents, backups, handover |
+| `docs/STUDENT_GUIDE.md` | For students: sign in with Google, launch a project, private-repo tokens, sharing |
 | `docker-compose.yml` | Run everything on the college server (see `docs/DEPLOY.md`) |
 
 ## Run locally
 
 ```bash
-cd server && cp .env.example .env && npm install && npm run seed && npm run dev   # http://localhost:5000
+cd server && cp .env.example .env && npm install && SEED_PASSWORD=pick-one npm run seed && npm run dev   # http://localhost:5000
 cd client && cp .env.example .env && npm install && npm run dev                   # http://localhost:5173
 ```
 
-`npm run seed` **wipes the database** and loads demo data: an admin, two faculty mentors, seven students (all on `ALLOWED_EMAIL_DOMAIN`), three published projects and one waiting in the mentor queue. Logins are printed at the end of the seed. Run server unit tests with `cd server && npm test`.
+`npm run seed` **wipes the database** and loads demo data: an admin, two faculty mentors, seven students (all on `ALLOWED_EMAIL_DOMAIN`), three published projects and one waiting in the mentor queue. Demo accounts use `demo-…` addresses; their password is your `SEED_PASSWORD` (or a random one written to the git-ignored `server/.seed-credentials.txt`) — no passwords live in this public repo. The seed refuses to wipe a non-local database unless you confirm it with `SEED_CONFIRM=<database name>`. Run server unit tests with `cd server && npm test`.
 
-Details: [docs/STARTER.md](docs/STARTER.md). **Deploying (Netlify + Railway + Atlas + S3): [docs/DEPLOY.md](docs/DEPLOY.md).**
+Details: [docs/STARTER.md](docs/STARTER.md). **Deploying (Netlify + Render + Atlas + S3): [docs/DEPLOY.md](docs/DEPLOY.md).**
 
 ## P0 at a glance
 

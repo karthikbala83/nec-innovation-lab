@@ -188,6 +188,7 @@ const fetchFromGitHub = async (client, owner, name, repoMeta, sha) => {
       createdAt: repoMeta.created_at,
       pushedAt: repoMeta.pushed_at,
       htmlUrl: repoMeta.html_url,
+      private: !!repoMeta.private,   // imported with the team's own read-only token
     },
     languages,
     tree: kept.slice(0, 5000).map((n) => ({ path: n.path, size: n.size })),
@@ -223,15 +224,15 @@ const summarise = async (project, snapshot) => {
 const running = new Map();   // projectId -> promise, so double-clicks don't import twice
 
 // Public entry point. Returns the saved snapshot.
-const importRepo = (project, { force = false } = {}) => {
+const importRepo = (project, { force = false, token } = {}) => {
   const key = String(project._id);
   if (running.has(key)) return running.get(key);
-  const job = doImport(project, { force }).finally(() => running.delete(key));
+  const job = doImport(project, { force, token }).finally(() => running.delete(key));
   running.set(key, job);
   return job;
 };
 
-const doImport = async (project, { force }) => {
+const doImport = async (project, { force, token }) => {
   const parsed = Project.parseRepoUrl(project.repoUrl);
   if (!parsed) throw new GitHubError('Add a public GitHub repo link first (https://github.com/owner/repo)', 400);
   const { owner, name } = parsed;
@@ -254,9 +255,11 @@ const doImport = async (project, { force }) => {
     return { snapshot, cached: true };
   }
 
-  const client = createClient();
+  const client = createClient({ token });
   const repoMeta = await client.repo(owner, name);
-  if (repoMeta.private) throw new GitHubError('Repository is private. Make it public to import it.', 400);
+  if (repoMeta.private && !token) {
+    throw new GitHubError('This repository is private. Import it with a read-only token (see "My repo is private"), or make the repo public.', 400);
+  }
   if (repoMeta.size === 0) throw new GitHubError('Repository is empty', 409);
   const sha = (await client.headSha(owner, name, repoMeta.default_branch)).trim();
 

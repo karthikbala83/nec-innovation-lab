@@ -2,7 +2,9 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Session = require('../models/Session');
-const { send } = require('../services/mailer');
+const { send, isConfigured: mailConfigured } = require('../services/mailer');
+const EmailCode = require('../feedback/EmailCode');
+const { hit } = require('../utils/rateLimit');
 
 // CLIENT_URL may list several origins; links in messages use the first one
 // Links in emails use the public site: PUBLIC_SITE_URL, else the custom domain in CLIENT_URL, else any public entry
@@ -21,11 +23,32 @@ const signToken = (userId, sessionId) =>
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   });
 
+// POST /api/auth/signup-code   { email } — prove the college email is yours before signing up
+exports.signupCode = async (req, res) => {
+  const email = String(req.body.email || '').toLowerCase().trim();
+  if (!User.isCollegeEmail(email)) return res.status(400).json({ message: `Use your college email (@${User.allowedDomains().join(' or @')})` });
+  if (!hit('signup-code-ip', req.ip, 40, 3600e3).ok || !hit('signup-code-email', email, 3, 3600e3).ok) {
+    return res.status(429).json({ message: 'Too many codes requested — check your inbox (and spam) or try in an hour' });
+  }
+  if (await User.exists({ email })) return res.status(400).json({ message: 'Email already registered — log in instead' });
+  const code = await EmailCode.issue(email);
+  await send({
+    to: email,
+    subject: `Your NEC Innovation Lab signup code: ${code}`,
+    heading: `Your code is ${code}`,
+    paragraphs: ['Enter it on the signup page to create your account. It expires in 10 minutes.', 'If you did not ask for this, ignore this email.'],
+  });
+  const out = { sent: true };
+  if (!mailConfigured() && process.env.NODE_ENV !== 'production') out.devCode = code;   // local testing only
+  res.json(out);
+};
+
 // POST /api/auth/signup
-// College email only. Role is never taken from the body — admins promote faculty.
+// College email only, proved with an emailed code. Role is never taken from the body — admins promote faculty.
+// (Students with the college Google Workspace can skip all this with "Continue with Google".)
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, githubUsername, profile = {} } = req.body;
+    const { name, email, password, githubUsername, profile = {}, code } = req.body;
     if (!User.isCollegeEmail(email)) {
       const domains = User.allowedDomains();
       return res.status(400).json({
@@ -36,6 +59,9 @@ exports.signup = async (req, res) => {
     }
     const exists = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (exists) return res.status(400).json({ message: 'Email already registered' });
+    if (!(await EmailCode.verify(String(email).toLowerCase().trim(), code))) {
+      return res.status(400).json({ message: 'Enter the 6-digit code we emailed you (it may have expired — request a new one)' });
+    }
 
     const { department, year, batch, rollNo, skills } = profile;
     const user = await User.create({
@@ -128,6 +154,21 @@ exports.tourDone = async (req, res) => {
   const version = Math.max(0, Math.min(100, Number(req.body.version) || 0));
   await User.updateOne({ _id: req.user._id }, { $max: { tourVersion: version } });
   res.json({ tourVersion: Math.max(version, req.user.tourVersion || 0) });
+};
+
+// PATCH /api/auth/me  (protected) — complete / edit your own profile
+exports.updateMe = async (req, res) => {
+  const user = await User.findById(req.user._id);
+  const { name, githubUsername, profile = {} } = req.body;
+  if (name !== undefined) user.name = String(name).trim().slice(0, 60);
+  if (githubUsername !== undefined) user.githubUsername = String(githubUsername).trim() || undefined;
+  for (const k of ['department', 'batch', 'rollNo', 'company']) {
+    if (profile[k] !== undefined) user.profile[k] = String(profile[k]).trim() || undefined;
+  }
+  if (profile.year !== undefined) user.profile.year = Number(profile.year) || undefined;
+  if (Array.isArray(profile.skills)) user.profile.skills = profile.skills.map((s) => String(s).trim().slice(0, 30)).filter(Boolean).slice(0, 15);
+  await user.save();   // model validates batch format, GitHub username…
+  res.json({ user: user.toAuthJSON(), profile: user.profile, githubUsername: user.githubUsername });
 };
 
 // GET /api/auth/me  (protected)

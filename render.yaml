@@ -1,0 +1,47 @@
+# Render blueprint for the API (New -> Blueprint). Secrets are set in the Render
+# dashboard (sync: false) — never in this public file. See docs/DEPLOY.md §3.
+services:
+  - type: web
+    name: nec-innovation-lab
+    runtime: node
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    branch: main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_DB_NAME
+        value: nec_innovation_lab
+      - key: ALLOWED_EMAIL_DOMAIN
+        value: nandhaengg.org
+      - key: S3_BUCKET
+        value: nec-innovation-lab
+      - key: S3_PREFIX
+        value: students-projects/
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: PUBLIC_SITE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: LOTUS_MOCK
+        sync: false
