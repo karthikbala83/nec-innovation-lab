@@ -26,7 +26,14 @@ const signToken = (userId, sessionId) =>
 // POST /api/auth/signup-code   { email } — prove the college email is yours before signing up
 exports.signupCode = async (req, res) => {
   const email = String(req.body.email || '').toLowerCase().trim();
-  if (!User.isCollegeEmail(email)) return res.status(400).json({ message: `Use your college email (@${User.allowedDomains().join(' or @')})` });
+  if (!User.isCollegeEmail(email)) {
+    const domains = User.allowedDomains();
+    return res.status(400).json({
+      message: domains.length
+        ? `Use your college email (@${domains.join(' or @')})`
+        : 'Signup is closed: ALLOWED_EMAIL_DOMAIN is not configured on the server',
+    });
+  }
   if (!hit('signup-code-ip', req.ip, 40, 3600e3).ok || !hit('signup-code-email', email, 3, 3600e3).ok) {
     return res.status(429).json({ message: 'Too many codes requested — check your inbox (and spam) or try in an hour' });
   }
