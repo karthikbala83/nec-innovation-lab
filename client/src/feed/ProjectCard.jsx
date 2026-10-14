@@ -9,12 +9,13 @@ function LivePill({ live }) {
     : <span className="live-pill down" title="Did not answer at the last daily check">● down</span>;
 }
 
-// One card in the feed / on a profile
-export default function ProjectCard({ project, extra }) {
+// One card in the feed / on a profile. `index` staggers the entrance animation.
+export default function ProjectCard({ project, extra, index = 0 }) {
   const p = project;
   return (
-    <Link to={`/p/${p.slug}`} className="project-card">
-      <Thumb project={p} />
+    <Link to={`/p/${p.slug}`} className="project-card" style={{ '--i': Math.min(index, 12) }}>
+      <span className="vote-box" aria-label={`${p.counts?.backers || 0} backers`}><b>▲</b>{p.counts?.backers || 0}</span>
+      <div className="thumb-wrap"><Thumb project={p} varied /></div>
       <div className="project-card-body">
         <div className="row-between">
           <h3>{p.title}</h3>
@@ -29,9 +30,9 @@ export default function ProjectCard({ project, extra }) {
         </div>
         <div className="row-between card-foot">
           <AvatarStack members={p.members} />
-          <span className="muted">
+          <span className="muted small">
             {p.labScore?.total > 0 && <span className="score-chip" title="Lab Score">★ {p.labScore.total}</span>}
-            {' '}👏 {p.counts?.backers || 0} · 👁 {p.counts?.views || 0}
+            {' '}👁 {p.counts?.views || 0}
           </span>
         </div>
         {extra}

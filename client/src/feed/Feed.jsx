@@ -51,8 +51,15 @@ export default function Feed() {
   return (
     <div>
       <section className="hero-band">
-        <h1>NEC Innovation Lab</h1>
-        <p>Projects built by Nandha Engineering College students — verified by the college, launched on the college domain.</p>
+        <span className="shape s1" aria-hidden="true" /><span className="shape s2" aria-hidden="true" />
+        <span className="shape s3" aria-hidden="true" /><span className="shape s4" aria-hidden="true" />
+        <h1>Built at NEC. <em>Proven</em> on GitHub.</h1>
+        <p>Launch pages for Nandha Engineering College projects — code pulled by the college, understanding checked, faculty-verified.</p>
+        <div className="hero-stats">
+          <span>🚀 {data.total || 0} launched</span>
+          <span>🪷 Lotus-verified skills</span>
+          <span>🎓 Mentor approved</span>
+        </div>
       </section>
 
       <div className="tabs" role="tablist">
@@ -99,7 +106,7 @@ export default function Feed() {
       )}
 
       <div className="card-grid">
-        {data.items.map((p) => <ProjectCard key={p._id} project={p} />)}
+        {data.items.map((p, i) => <ProjectCard key={p._id} project={p} index={i} />)}
       </div>
 
       {loading && <Spinner />}

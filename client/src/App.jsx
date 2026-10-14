@@ -32,6 +32,19 @@ function Protected({ children, roles }) {
   return children;
 }
 
+// Logo: a flat 8-petal lotus (the portal's understanding check), one colour per petal
+const MARK_COLORS = ['#ff5a36', '#ffc83d', '#19c39c', '#3d9bff', '#8b5cf6', '#ff6fae', '#8cc63f', '#ff9f1c'];
+function BrandMark() {
+  return (
+    <svg className="brand-mark" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
+      {MARK_COLORS.map((c, i) => (
+        <ellipse key={c} cx="15" cy="7.5" rx="3.6" ry="6.6" fill={c} stroke="#1b1f3b" strokeWidth="1.3" transform={`rotate(${i * 45} 15 15)`} />
+      ))}
+      <circle cx="15" cy="15" r="4" fill="#1b1f3b" />
+    </svg>
+  );
+}
+
 export default function App() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -40,7 +53,7 @@ export default function App() {
   return (
     <>
       <nav className="nav">
-        <Link to="/" className="brand" onClick={close}>NEC <span>Innovation Lab</span></Link>
+        <Link to="/" className="brand" onClick={close}><BrandMark />NEC <span>Innovation Lab</span></Link>
         <button className="menu-btn" aria-expanded={open} aria-label="Menu" onClick={() => setOpen(!open)}>☰</button>
         <div className={open ? 'nav-links open' : 'nav-links'} onClick={close}>
           <NavLink to="/" end>Explore</NavLink>
@@ -53,6 +66,7 @@ export default function App() {
               {['faculty', 'admin'].includes(user.role) && <NavLink to="/review">Review</NavLink>}
               {user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
               {user.handle && ['student', 'faculty'].includes(user.role) && <NavLink to={`/u/${user.handle}`}>Profile</NavLink>}
+              {['student', 'admin'].includes(user.role) && <NavLink to="/projects/new" className="nav-cta">＋ Launch</NavLink>}
               <button className="link-btn" onClick={logout}>Logout</button>
             </>
           ) : (

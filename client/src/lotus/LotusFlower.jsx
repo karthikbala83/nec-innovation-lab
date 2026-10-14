@@ -1,4 +1,6 @@
-// Lotus Blossom badge: 8 petals around the project, gold = petal filled (spec §7)
+// Lotus Blossom badge: 8 petals around the project; a coloured petal = filled (spec §7)
+// One flat colour per petal, so a full lotus is a little rainbow
+const PETAL_COLORS = ['#ff5a36', '#ffc83d', '#19c39c', '#3d9bff', '#8b5cf6', '#ff6fae', '#8cc63f', '#ff9f1c'];
 const PETAL_NAMES = ['Problem & users', 'Architecture', 'Data model', 'API & logic', 'Frontend', 'Deployment', 'Security', 'Scale & next steps'];
 
 export default function LotusFlower({ petals = [], size = 44, title }) {
@@ -9,11 +11,13 @@ export default function LotusFlower({ petals = [], size = 44, title }) {
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label} className="lotus-flower">
       <title>{label}</title>
       {PETAL_NAMES.map((_, i) => (
-        <ellipse key={i} cx={c} cy={c - size * 0.24} rx={size * 0.11} ry={size * 0.22}
-          transform={`rotate(${i * 45} ${c} ${c})`}
-          fill={filled.has(i + 1) ? 'var(--gold)' : 'var(--soft)'} stroke="#fff" strokeWidth="1" />
+        <g key={i} transform={`rotate(${i * 45} ${c} ${c})`}>
+          <ellipse className="petal" cx={c} cy={c - size * 0.24} rx={size * 0.12} ry={size * 0.22}
+            style={{ '--p': i, transformOrigin: `${c}px ${c}px` }}
+            fill={filled.has(i + 1) ? PETAL_COLORS[i] : '#fff'} stroke="#1b1f3b" strokeWidth={size > 40 ? 1.6 : 1.2} />
+        </g>
       ))}
-      <circle cx={c} cy={c} r={size * 0.13} fill="var(--navy)" />
+      <circle cx={c} cy={c} r={size * 0.14} fill="#1b1f3b" />
       <text x={c} y={c} dominantBaseline="central" textAnchor="middle" fontSize={size * 0.17} fontWeight="700" fill="#fff">{filled.size}</text>
     </svg>
   );

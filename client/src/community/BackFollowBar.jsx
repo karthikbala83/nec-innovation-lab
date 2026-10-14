@@ -13,6 +13,8 @@ export default function BackFollowBar({ project, onCounts }) {
   const [offer, setOffer] = useState(null);   // 'mentor' | 'pilot' | null
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [burst, setBurst] = useState(0);   // bumps on each new back -> replays the confetti
+  const [popping, setPopping] = useState(false);
   const [msg, setMsg] = useState(null);   // { text, ok }
 
   const id = project._id;
@@ -40,6 +42,9 @@ export default function BackFollowBar({ project, onCounts }) {
       const { data } = await api.post(`/projects/${id}/back`, { type: 'back' });
       setState((s) => ({ ...s, backings: [...s.backings, data] }));
       update({ backers: (counts.backers || 0) + 1 });
+      setBurst((n) => n + 1);
+      setPopping(true);
+      setTimeout(() => setPopping(false), 650);
     }
   });
 
@@ -62,8 +67,12 @@ export default function BackFollowBar({ project, onCounts }) {
   if (!user) {
     return (
       <div className="back-bar">
-        <Link className="btn" to="/login" state={{ from: location.pathname }}>👏 Back this project · {counts.backers || 0}</Link>
-        <Link className="btn ghost" to="/login" state={{ from: location.pathname }}>Follow · {counts.followers || 0}</Link>
+        <Link className="btn upvote" to="/login" state={{ from: location.pathname }}>
+          <span className="tri">▲</span> Back <span className="count">{counts.backers || 0}</span>
+        </Link>
+        <Link className="btn ghost follow-btn" to="/login" state={{ from: location.pathname }}>
+          <span className="star">☆</span> Follow · {counts.followers || 0}
+        </Link>
         <span className="muted small">Sign in with your college email to back or follow</span>
       </div>
     );
@@ -72,12 +81,17 @@ export default function BackFollowBar({ project, onCounts }) {
   return (
     <div className="back-bar">
       {!isTeam && (
-        <button className={has('back') ? 'backed' : ''} onClick={toggleBack} disabled={busy} aria-pressed={!!has('back')}>
-          👏 {has('back') ? 'Backed' : 'Back this project'} · {counts.backers || 0}
+        <button className={`upvote ${has('back') ? 'on' : ''} ${popping ? 'pop' : ''}`} onClick={toggleBack}
+          disabled={busy} aria-pressed={!!has('back')} aria-label={`${has('back') ? 'Backed' : 'Back this project'}, ${counts.backers || 0} backers`}>
+          <span className="tri" aria-hidden="true">▲</span>
+          {has('back') ? 'Backed' : 'Back this project'}
+          <span className="count">{counts.backers || 0}</span>
+          {popping && <span key={burst} className="burst" aria-hidden="true">{Array.from({ length: 8 }, (_, i) => <i key={i} />)}</span>}
         </button>
       )}
-      <button className="ghost" onClick={toggleFollow} disabled={busy} aria-pressed={state.following}>
-        {state.following ? '✓ Following' : 'Follow'} · {counts.followers || 0}
+      <button className={`ghost follow-btn ${state.following ? 'on' : ''}`} onClick={toggleFollow} disabled={busy} aria-pressed={state.following}>
+        <span className="star" aria-hidden="true">{state.following ? '★' : '☆'}</span>
+        {state.following ? 'Following' : 'Follow'} · {counts.followers || 0}
       </button>
       {!isTeam && user.role === 'faculty' && !has('mentor') && (
         <button className="ghost" onClick={() => setOffer('mentor')}>Offer to mentor</button>

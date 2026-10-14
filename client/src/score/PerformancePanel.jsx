@@ -9,14 +9,19 @@ export const PART_LABEL = {
 };
 
 export function ScoreRing({ value = 0, size = 72 }) {
-  const r = (size - 8) / 2;
-  const c = 2 * Math.PI * r;
+  const r = (size - 10) / 2;
+  const arcR = r - 4;                    // the coloured arc sits just inside the outline
+  const c = 2 * Math.PI * arcR;
+  const color = value >= 70 ? 'var(--mint)' : value >= 40 ? 'var(--sun)' : 'var(--coral)';
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Lab Score ${value} out of 100`} className="score-ring">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--soft)" strokeWidth="7" />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--gold)" strokeWidth="7" strokeLinecap="round"
-        strokeDasharray={`${(value / 100) * c} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-      <text x="50%" y="50%" dominantBaseline="central" textAnchor="middle" fontSize={size * 0.3} fontWeight="800" fill="var(--navy)">{value}</text>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="#fff" stroke="#1b1f3b" strokeWidth="2" />
+      <circle cx={size / 2} cy={size / 2} r={arcR} fill="none" stroke="var(--soft)" strokeWidth="7" />
+      <circle className="arc" cx={size / 2} cy={size / 2} r={arcR} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
+        strokeDasharray={c} strokeDashoffset={c * (1 - value / 100)} style={{ '--c': c }}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      <text x="50%" y="52%" dominantBaseline="central" textAnchor="middle" fontSize={size * 0.32} fontWeight="800"
+        fontFamily="Bricolage Grotesque, sans-serif" fill="#1b1f3b">{value}</text>
     </svg>
   );
 }
