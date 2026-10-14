@@ -17,8 +17,9 @@ const { startScheduler } = require('./jobs/dailyChecks');
 const app = express();
 
 // ---- Global middleware ----
-// Railway / Render sit behind a proxy: trust it so req.ip is the real visitor
-app.set('trust proxy', 1);
+// Railway / Render sit behind ONE proxy; the Docker setup has two (Caddy -> nginx).
+// Trust exactly that many hops so req.ip is the real visitor (rate limits depend on it).
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS || 1));
 // CLIENT_URL may list several origins: "https://lab.nandhaengg.org,https://nec-lab.netlify.app"
 // CLIENT_URL_PATTERN (optional regex) allows Netlify deploy previews, e.g. ^https://[a-z0-9-]+--nec-lab\.netlify\.app$
 const origins = (process.env.CLIENT_URL || '').split(',').map((o) => o.trim().replace(/\/+$/, '')).filter(Boolean);
@@ -55,6 +56,9 @@ app.use('/api/uploads', protect, require('./uploads/uploadRoutes'));         // 
 app.use('/api/lotus', protect, require('./lotus/lotusRoutes'));              // Lotus Blossom + viva
 app.use('/api/talent', protect, require('./talent/talentRoutes'));           // recruiter view
 app.use('/api/intros', protect, require('./intros/introRoutes'));            // intro requests
+
+// ---- P3: college ops ----
+app.use('/api/seasons', require('./seasons/seasonRoutes'));                 // seasons & demo day
 
 // ---- Likes, feedback & project requests (open to visitors with the link) ----
 app.use('/api', require('./feedback/feedbackRoutes'));

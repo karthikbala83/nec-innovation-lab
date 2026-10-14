@@ -5,6 +5,8 @@
 // ---------------------------------------------------------------
 const Project = require('../projects/Project');
 const Setting = require('../settings/Setting');
+const Season = require('../seasons/Season');
+const SeasonEntry = require('../seasons/SeasonEntry');
 
 const BOARDS = {
   lab: { label: 'Lab Score', sort: { 'labScore.total': -1 }, has: { 'labScore.total': { $gt: 0 } } },
@@ -21,6 +23,10 @@ exports.board = async (req, res) => {
   const filter = { status: 'published', ...has };
   if (req.query.department) filter.department = req.query.department;
   if (Project.CATEGORIES.includes(req.query.category)) filter.category = req.query.category;
+  if (req.query.season) {   // per-season boards: only that season's entries
+    const season = await Season.findOne({ slug: String(req.query.season).toLowerCase() }).select('_id');
+    filter._id = { $in: season ? await SeasonEntry.find({ season: season._id }).distinct('project') : [] };
+  }
 
   const [rows, settings] = await Promise.all([
     Project.find(filter)

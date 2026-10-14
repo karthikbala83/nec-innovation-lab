@@ -155,6 +155,43 @@ GitHub token: github.com → Settings → Developer settings → Fine-grained to
 - [ ] Atlas: enable backups (M10+) or schedule `mongodump`.
 - [ ] Rotate the AWS key and GitHub token if they are ever pasted anywhere public.
 
+## 7. Custom domain (e.g. `innovation.nandha.ac.in`)
+
+Ask college IT for two DNS records:
+
+| Record | Name | Points to |
+|---|---|---|
+| CNAME | `innovation` | `<your-site>.netlify.app` (Netlify → Domain management → *Add a domain* shows the exact target) |
+| CNAME | `api.innovation` | the target Railway shows under Service → Settings → Networking → *Custom domain* |
+
+Then:
+1. Netlify adds the domain and issues HTTPS automatically. Set it as the *primary* domain.
+2. Railway: add `api.innovation.nandha.ac.in` as a custom domain (HTTPS is automatic).
+3. Railway variables: `CLIENT_URL=https://innovation.nandha.ac.in` (keep the netlify.app URL too, comma-separated, during the switch).
+4. Netlify variables: `VITE_API_URL=https://api.innovation.nandha.ac.in/api` → *Clear cache and deploy*.
+5. S3 CORS: add `https://innovation.nandha.ac.in`. Resend: verify the domain so `MAIL_FROM=…@innovation.nandha.ac.in` works.
+6. Profile QR codes use the address the page is opened on, so they switch to the college domain on their own. Ask students to download their QR again once the domain is live.
+
+## 8. College server (Docker)
+
+Everything in one box: `caddy` (HTTPS) → `web` (nginx + React) → `api` → `mongo`. The site and the API share one domain (`/api`), so there is no CORS to configure.
+
+Server: Ubuntu 22.04+, 2 vCPU, 4 GB RAM, 20 GB disk; Docker Engine + compose plugin; ports 80 and 443 open; DNS `A` record for the domain → the server's public IP.
+
+```bash
+git clone https://github.com/karthikbala83/nec-innovation-lab.git /opt/nec-innovation-lab
+cd /opt/nec-innovation-lab
+cp .env.docker.example .env.docker      # fill in SITE_DOMAIN, JWT_SECRET, keys…
+docker compose --env-file .env.docker up -d --build
+docker compose ps                        # all services "healthy"
+```
+
+Moving data from Atlas: `mongodump --uri "<atlas uri>" --db nec_innovation_lab --gzip --archive=atlas.gz`, copy `atlas.gz` into `backups/`, then
+`docker compose exec -T mongo mongorestore --gzip --archive=/backups/atlas.gz`.
+
+Updates: `git pull && docker compose --env-file .env.docker up -d --build`. Backups: `scripts/backup.sh` from cron (see `docs/RUNBOOK.md`).
+MongoDB is not published to the host network; reach it with `docker compose exec mongo mongosh`.
+
 ## Local development against Atlas
 Some routers refuse the DNS lookups `mongodb+srv://` needs (`querySrv ECONNREFUSED`). Add to `server/.env`:
 ```

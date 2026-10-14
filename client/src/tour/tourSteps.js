@@ -35,6 +35,8 @@ const STUDENT = (user) => [
     body: 'Share your project link on WhatsApp — anyone can like it and send feedback, even companies asking for a project like yours. Messages are checked first, then land here. Reply without sharing your number.' },
   { target: t('nav-profile'), menu: true, title: 'Your profile + QR',
     body: 'One public link for your resume, with a QR code. Recruiters reach you through the placement cell — never directly.' },
+  { target: t('nav-seasons'), menu: true, title: 'Seasons & Demo Days',
+    body: 'Enter your published project into the hackathon or semester demo day. Faculty judge it on a clear rubric — winners get a confirmed badge.' },
   { target: t('nav-leaderboards'), menu: true, title: 'Leaderboards',
     body: 'Lab Score, most backed, best Lotus… every score shows exactly how it is calculated, so you know what to improve.' },
   finish,
@@ -49,6 +51,8 @@ const FACULTY = (user) => [
     body: 'Read each student\'s Lotus answers (private to you and them), adjust any score, then mark the viva done after a short chat.' },
   { target: t('nav-talent'), menu: true, title: 'Talent view',
     body: 'See students by stack and Lotus strength — handy for recommending them to companies.' },
+  { target: t('nav-seasons'), menu: true, title: 'Judge a season',
+    body: 'When you are a judge, open the season and tap "Judge entries" to score each team on the rubric. You never score a project you mentor.' },
   { target: t('nav-profile'), menu: true, title: 'Your mentor profile', body: 'Lists every project you mentor, on one public page.' },
   finish,
 ];
@@ -69,7 +73,7 @@ const RECRUITER = (user) => [
 const ADMIN = (user) => [
   { emoji: '🛠', title: `Welcome, ${first(user)}!`, body: 'Here\'s where you run the portal.' },
   { route: '/admin', target: t('admin-links'), title: 'Admin tools',
-    body: 'People & roles (promote faculty, verify students, invite recruiters), Lab Score weights, intro requests, and feedback moderation.' },
+    body: 'People & roles (promote faculty, verify students, invite recruiters), Lab Score weights, intro requests, feedback moderation, seasons & demo days, and reports with CSV exports.' },
   { target: t('nav-review'), menu: true, title: 'Review queue', body: 'Admins can approve any project and open viva mode for any team.' },
   { route: '/admin/moderation', target: t('moderation-tabs'), title: 'Moderation',
     body: 'Feedback the content check held back (off-topic, links, insults, Tamil text) waits here. Deliver or reject.' },

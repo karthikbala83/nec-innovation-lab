@@ -1,0 +1,67 @@
+# ---------------------------------------------------------------
+# NEC Innovation Lab on the college's own server (spec §10, P3).
+#   caddy  :80/:443  automatic HTTPS for SITE_DOMAIN -> web
+#   web    nginx: the React build + /api forwarded to the API (same origin)
+#   api    Express (node server.js)
+#   mongo  MongoDB 7 — NOT published to the host network
+#
+#   cp .env.docker.example .env.docker   # fill it in
+#   docker compose --env-file .env.docker up -d --build
+# Backups: scripts/backup.sh  (see docs/RUNBOOK.md)
+# ---------------------------------------------------------------
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./server
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB_NAME: ${MONGO_DB_NAME:-nec_innovation_lab}
+      CLIENT_URL: https://${SITE_DOMAIN}
+      PORT: "5000"
+      TRUST_PROXY_HOPS: "2"          # caddy -> nginx -> api
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: /api
+        VITE_COLLEGE_DOMAIN: ${COLLEGE_EMAIL_DOMAIN:-nandhaengg.org}
+    restart: unless-stopped
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - web
+
+volumes:
+  mongo-data:
+  caddy-data:
+  caddy-config:

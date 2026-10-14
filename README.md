@@ -29,6 +29,8 @@ Full product spec: **[docs/PORTAL_SPEC.md](docs/PORTAL_SPEC.md)**
 | `docs/git-merge-lab.html` | Animated Git lesson: branch, merge, resolve a conflict — open in any browser |
 | `CONTRIBUTING.md` | How students contribute (branches, PRs, reviews) |
 | `CLAUDE.md` | Conventions for AI-assisted coding in this repo |
+| `docs/RUNBOOK.md` | Operating the portal: calendar, incidents, backups, handover |
+| `docker-compose.yml` | Run everything on the college server (see `docs/DEPLOY.md`) |
 
 ## Run locally
 
@@ -73,6 +75,18 @@ Details: [docs/STARTER.md](docs/STARTER.md). **Deploying (Netlify + Railway + At
 | Mentor / admin | review queue, launch page | **Duplicate check**: > 60% identical files to another college project is flagged (boilerplate ignored; never public) |
 | Recruiter | `/talent` | Students by stack, stage, department, Lotus petals, viva-verified; **Request intro** goes to the placement cell |
 | Placement cell (admin) | `/admin/people`, `/admin/intros` | Invite recruiters (one-time set-password link); forward / decline intro requests |
+
+## P3 at a glance (college ops)
+
+| Who | Where | What |
+|---|---|---|
+| Anyone | `/seasons` | Seasons & Demo Days: timeline, entries by track, **winners wall**; per-season leaderboards |
+| Team | season page | Enter a published project while entries are open (pick a track, one-line pitch); withdraw before close |
+| Judges (faculty) | `/seasons/<slug>/judge` | Score each entry 0–10 per rubric criterion; never a project they mentor |
+| Admin | `/admin/seasons` | Create seasons (dates, tracks, judges, weighted rubric), see the ranking, **publish results** — winners get a confirmed badge (feeds the Lab Score) and an email |
+| Admin | `/admin/reports` | Projects by department / stage / month, Lotus & viva coverage, engagement, intros; **CSV exports** (projects, students, intros, feedback, season results) |
+| Tech club | `docs/RUNBOOK.md` | Calendar, health checks, incident table, backups & restore, secret rotation, handover checklist |
+| College IT | `docker-compose.yml`, `docs/DEPLOY.md` | Custom domain; one-box Docker deploy (Caddy HTTPS → nginx → API → MongoDB) with backup/restore scripts |
 
 ## App tour
 

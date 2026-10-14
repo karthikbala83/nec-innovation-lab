@@ -1,6 +1,6 @@
 // Run: npm run seed      (WIPES users, sessions, notes, projects, snapshots, metrics,
 //                        backings, follows, comments, updates, settings, Lotus, intros,
-//                        likes, feedback & requests)
+//                        likes, feedback & requests, seasons)
 // Creates 1 admin, 2 faculty mentors, 7 students, 3 published demo
 // projects and 1 project waiting in the mentor queue. Repo snapshots
 // are fixtures (no GitHub calls), so seeding works offline.
@@ -26,6 +26,8 @@ const { mock: lotusMock } = require('../services/lotusClient');
 const { checkDuplicates } = require('../projects/duplicateCheck');
 const Like = require('../feedback/Like');
 const Feedback = require('../feedback/Feedback');
+const Season = require('../seasons/Season');
+const SeasonEntry = require('../seasons/SeasonEntry');
 
 const DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'nandhaengg.org').split(',')[0].trim();
 const mail = (local) => `${local}@${DOMAIN}`;
@@ -89,9 +91,9 @@ const run = async () => {
     User.deleteMany(), Note.deleteMany(), Session.deleteMany(),
     Project.deleteMany(), RepoSnapshot.deleteMany(), MetricDaily.deleteMany(),
     Backing.deleteMany(), Follow.deleteMany(), Comment.deleteMany(), Update.deleteMany(), Setting.deleteMany(),
-    LotusSet.deleteMany(), LotusAttempt.deleteMany(), IntroRequest.deleteMany(), Like.deleteMany(), Feedback.deleteMany(),
+    LotusSet.deleteMany(), LotusAttempt.deleteMany(), IntroRequest.deleteMany(), Like.deleteMany(), Feedback.deleteMany(), Season.deleteMany(), SeasonEntry.deleteMany(),
   ]);
-  await Promise.all([User, Project, RepoSnapshot, MetricDaily, Backing, Follow, Comment, Update, Setting, LotusSet, LotusAttempt, IntroRequest, Like, Feedback]
+  await Promise.all([User, Project, RepoSnapshot, MetricDaily, Backing, Follow, Comment, Update, Setting, LotusSet, LotusAttempt, IntroRequest, Like, Feedback, Season, SeasonEntry]
     .map((M) => M.syncIndexes()));
   await Setting.get();   // default Lab Score weights
 
@@ -373,6 +375,41 @@ const run = async () => {
       check: { verdict: 'hold', reasons: ['Doesn\'t seem to be about this project'] } },
   ]);
 
+  // ---- P3: seasons — one finished with results, one open now, one upcoming ----
+  const inDays = (n) => new Date(Date.now() + n * DAY);
+  const judges = [drRamesh._id, drLakshmi._id];
+  const hackathon = await Season.create({
+    name: 'NEC Hackathon 2026', kind: 'season', judges,
+    description: 'The college\'s 36-hour hackathon. Build something useful for the campus or the district.',
+    submissionOpens: daysAgo(60), submissionCloses: daysAgo(45), judgingCloses: daysAgo(40), demoDayAt: daysAgo(40),
+    venue: 'Main Auditorium', resultsPublishedAt: daysAgo(39),
+    winners: [{ project: bus._id, track: 'Software', award: 'Winner', rank: 1 }, { project: medi._id, track: 'Research', award: 'Best research', rank: 1 }],
+  });
+  const marks = (a, b, c, d2) => ({ innovation: a, impact: b, execution: c, presentation: d2 });
+  const scored = (m) => ({ marks: m, total: SeasonEntry.weightedTotal(m, Season.DEFAULT_CRITERIA) });
+  // Dr. Ramesh mentors both entries, so (conflict of interest) only Dr. Lakshmi scored them
+  for (const [project, track, m] of [[bus, 'Software', marks(9, 9, 8, 9)], [medi, 'Research', marks(8, 7, 8, 7)]]) {
+    const s1 = { judge: drLakshmi._id, ...scored(m), comment: 'Strong demo, clear impact.' };
+    await SeasonEntry.create({ season: hackathon._id, project: project._id, track, enteredBy: project.owner, scores: [s1], average: s1.total, createdAt: daysAgo(50) });
+  }
+  await Project.updateOne({ _id: medi._id }, { $push: { competitions: { name: 'NEC Hackathon 2026', stage: 'winner', confirmed: true, date: daysAgo(40) } } });
+
+  const demoDay = await Season.create({
+    name: 'Odd Sem 2026 Demo Day', kind: 'demo_day', judges,
+    description: 'Show your semester project to faculty, alumni and industry guests. Live demos, 5 minutes per team, judged on the rubric.',
+    submissionOpens: daysAgo(7), submissionCloses: inDays(10), judgingCloses: inDays(20), demoDayAt: inDays(22), venue: 'IT Block Seminar Hall',
+  });
+  for (const [project, track, pitch] of [[krishi, 'Hardware', 'Saves 31% water on turmeric drip lines — live valve demo.'], [bus, 'Software', 'Live bus map for 32 college buses.']]) {
+    await SeasonEntry.create({ season: demoDay._id, project: project._id, track, enteredBy: project.owner, pitch, createdAt: daysAgo(3) });
+    await Project.updateOne({ _id: project._id }, { $push: { competitions: { name: demoDay.name, stage: 'registered', date: demoDay.demoDayAt } } });
+  }
+
+  await Season.create({
+    name: 'SIH 2027 Internal Round', kind: 'season', judges,
+    description: 'College-level round for Smart India Hackathon 2027. Top teams are nominated to the national round.',
+    submissionOpens: inDays(30), submissionCloses: inDays(60), judgingCloses: inDays(70), demoDayAt: inDays(72), tracks: ['Software', 'Hardware'],
+  });
+
   for (const p of [bus, krishi, medi]) await recompute(p._id);
 
   // ---- A few notes so the starter's admin dashboard still has data ----
@@ -386,7 +423,8 @@ const run = async () => {
   P1: backers, follows, comments (1 reported), updates, 1 pending pilot, Lab Scores computed
   P2: Lotus (mock) for 5 students, 2 vivas; recruiter meera.iyer@kaveri-labs.example / recruiter123;
       2 intro requests; the queued project is flagged as 70% identical to CampusBus Live
-  Likes on all 3; 4 feedback + 1 project request (with a reply) delivered; 1 message held for moderation`);
+  Likes on all 3; 4 feedback + 1 project request (with a reply) delivered; 1 message held for moderation
+  P3: seasons — NEC Hackathon 2026 (results), Odd Sem 2026 Demo Day (open, 2 entries), SIH 2027 Internal Round (upcoming)`);
   process.exit(0);
 };
 

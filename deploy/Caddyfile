@@ -1,0 +1,7 @@
+# Caddy gets and renews the HTTPS certificate for SITE_DOMAIN automatically
+# (the domain's DNS must point at this server and ports 80/443 must be open).
+{$SITE_DOMAIN} {
+	encode gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy web:80
+}

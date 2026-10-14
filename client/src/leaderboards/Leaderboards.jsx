@@ -19,16 +19,19 @@ export default function Leaderboards() {
   const [params, setParams] = useSearchParams();
   const board = params.get('board') || 'lab';
   const department = params.get('department') || '';
+  const season = params.get('season') || '';
+  const [seasons, setSeasons] = useState([]);
+  useEffect(() => { api.get('/seasons').then((r) => setSeasons(r.data)).catch(() => {}); }, []);
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(null);
 
   useEffect(() => {
     setData(null);
-    api.get('/leaderboards', { params: { board, department } })
+    api.get('/leaderboards', { params: { board, department, season } })
       .then((r) => setData(r.data))
       .catch((err) => setError(errorText(err)));
-  }, [board, department]);
+  }, [board, department, season]);
 
   const set = (k, v) => {
     const next = new URLSearchParams(params);
@@ -47,10 +50,14 @@ export default function Leaderboards() {
             </button>
           ))}
       </div>
-      <div className="filters one">
+      <div className="filters two">
         <select value={department} onChange={(e) => set('department', e.target.value)} aria-label="Department">
           <option value="">All departments</option>
           {DEPARTMENTS.map((d) => <option key={d}>{d}</option>)}
+        </select>
+        <select value={season} onChange={(e) => set('season', e.target.value)} aria-label="Season">
+          <option value="">All projects</option>
+          {seasons.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
         </select>
       </div>
 

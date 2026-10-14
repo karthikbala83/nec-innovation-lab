@@ -24,6 +24,11 @@ import Intros from './admin/Intros.jsx';
 import Inbox from './feedback/Inbox.jsx';
 import SenderThread from './feedback/SenderThread.jsx';
 import Moderation from './admin/Moderation.jsx';
+import Seasons from './seasons/Seasons.jsx';
+import SeasonPage from './seasons/SeasonPage.jsx';
+import JudgePage from './seasons/JudgePage.jsx';
+import AdminSeasons from './admin/AdminSeasons.jsx';
+import Reports from './admin/Reports.jsx';
 import api from './api/axios';
 import Tour from './tour/Tour.jsx';
 import { stepsFor, TOUR_VERSION } from './tour/tourSteps.js';
@@ -85,6 +90,7 @@ export default function App() {
         <button className="menu-btn" aria-expanded={open} aria-label="Menu" onClick={() => setOpen(!open)}>☰</button>
         <div className={open ? 'nav-links open' : 'nav-links'} onClick={close}>
           <NavLink to="/" end>Explore</NavLink>
+          <NavLink to="/seasons" data-tour="nav-seasons">Seasons</NavLink>
           <NavLink to="/leaderboards" data-tour="nav-leaderboards">Leaderboards</NavLink>
           {user ? (
             <>
@@ -114,6 +120,9 @@ export default function App() {
           <Route path="/p/:slug" element={<LaunchPage />} />
           <Route path="/u/:handle" element={<Profile />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
+          <Route path="/seasons" element={<Seasons />} />
+          <Route path="/seasons/:slug" element={<SeasonPage />} />
+          <Route path="/seasons/:slug/judge" element={<Protected roles={['faculty', 'admin']}><JudgePage /></Protected>} />
 
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -130,6 +139,8 @@ export default function App() {
           <Route path="/intros" element={<Protected><MyIntros /></Protected>} />
           <Route path="/admin/intros" element={<Protected roles={['admin']}><Intros /></Protected>} />
           <Route path="/admin/moderation" element={<Protected roles={['admin']}><Moderation /></Protected>} />
+          <Route path="/admin/seasons" element={<Protected roles={['admin']}><AdminSeasons /></Protected>} />
+          <Route path="/admin/reports" element={<Protected roles={['admin']}><Reports /></Protected>} />
           <Route path="/inbox" element={<Protected><Inbox /></Protected>} />
           <Route path="/messages/:id" element={<SenderThread />} />
           <Route path="/admin" element={<Protected roles={['admin']}><Admin /></Protected>} />
