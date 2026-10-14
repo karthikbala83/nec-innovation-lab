@@ -4,6 +4,7 @@
 // with a note saying what to fix.
 // ---------------------------------------------------------------
 const Project = require('../projects/Project');
+const RepoSnapshot = require('../projects/RepoSnapshot');
 const { recomputeSoon } = require('../score/labScore');
 
 const isReviewer = (project, user) =>
@@ -16,10 +17,17 @@ exports.queue = async (req, res) => {
   if (req.user.role !== 'admin') filter.mentor = req.user._id;
   const projects = await Project.find(filter)
     .sort({ 'review.submittedAt': 1, updatedAt: -1 })   // oldest request first
-    .select('title slug tagline department year stage category status review repo members mentor updatedAt')
+    .select('title slug tagline department year stage category status review repo members mentor updatedAt lotus')
     .populate('members.user', 'name handle')
     .populate('mentor', 'name')
     .lean();
+  // Attach the duplicate-check flag (mentor/admin only)
+  const snaps = await RepoSnapshot.find({ project: { $in: projects.map((p) => p._id) } })
+    .select('project duplicate').populate('duplicate.matches.project', 'title slug').lean();
+  projects.forEach((p) => {
+    const d = snaps.find((s) => String(s.project) === String(p._id))?.duplicate;
+    if (d?.matches?.length) p.duplicate = d;
+  });
   res.json(projects);
 };
 

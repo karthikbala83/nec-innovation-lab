@@ -17,6 +17,7 @@ const RepoSnapshot = require('./RepoSnapshot');
 const Project = require('./Project');
 const { createClient, GitHubError } = require('../services/github');
 const { skipReason, scanSecrets, detectStack, isKeyFile } = require('./repoRules');
+const { checkDuplicates } = require('./duplicateCheck');
 
 const env = (name, fallback) => Number(process.env[name] || fallback);
 const CACHE_MS = () => env('GITHUB_CACHE_MINUTES', 30) * 60 * 1000;
@@ -281,6 +282,7 @@ const doImport = async (project, { force }) => {
     upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true,
   });
   await summarise(project, snapshot);
+  await checkDuplicates(snapshot).catch((err) => console.error('Duplicate check failed:', err.message));
   return { snapshot, cached: false };
 };
 

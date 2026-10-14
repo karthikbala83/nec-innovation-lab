@@ -14,7 +14,7 @@ test('an empty project scores 0 and every part explains itself', () => {
   assert.equal(total, 0);
   assert.deepEqual(Object.keys(parts), ['understanding', 'build', 'works', 'community', 'recognition', 'freshness']);
   for (const p of Object.values(parts)) assert.ok(p.detail, 'has a detail line');
-  assert.equal(parts.understanding.pending, true);
+  assert.equal(parts.understanding.detail, 'No Lotus checks taken yet');
   assert.equal(parts.works.detail, 'No live URL');
 });
 

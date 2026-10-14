@@ -9,6 +9,7 @@ const MetricDaily = require('../feed/MetricDaily');
 const User = require('../models/User');
 const { importRepo } = require('./repoImport');
 const { recomputeSoon } = require('../score/labScore');
+const lotusSummary = require('../lotus/lotusSummary');
 
 const PUBLIC_USER = User.PUBLIC_FIELDS;
 const NEW_DAYS = 14;
@@ -128,14 +129,19 @@ exports.getOne = async (req, res) => {
 
   // Code panel: public summary; secret warnings only for team / mentor / admin
   const snap = await RepoSnapshot.findOne({ project: project._id })
-    .select('owner name sha defaultBranch meta languages stack weeklyCommits memberStats.user memberStats.githubUsername memberStats.commits memberStats.lastCommitAt unmappedCommits skipped scan fetchedAt secretWarnings commits')
+    .select('owner name sha defaultBranch meta languages stack weeklyCommits memberStats.user memberStats.githubUsername memberStats.commits memberStats.lastCommitAt unmappedCommits skipped scan fetchedAt secretWarnings commits duplicate')
     .slice('commits', 5)
     .lean();
   let code = null;
   if (snap) {
-    const { secretWarnings, ...rest } = snap;
+    const { secretWarnings, duplicate, ...rest } = snap;
     code = rest;
     if (isTeam || isMentor || isAdmin) code.secretWarnings = secretWarnings;
+    if ((isMentor || isAdmin) && duplicate?.matches?.length) {
+      // Copy check is for the mentor's eyes only (spec §9)
+      const others = await Project.find({ _id: { $in: duplicate.matches.map((m) => m.project) } }).select('title slug').lean();
+      code.duplicate = { ...duplicate, matches: duplicate.matches.map((m) => ({ ...m, project: others.find((o) => String(o._id) === String(m.project)) })) };
+    }
   }
 
   const out = project.toObject();
@@ -144,6 +150,7 @@ exports.getOne = async (req, res) => {
   out.isNewLaunch = !!project.publishedAt && Date.now() - project.publishedAt.getTime() < NEW_DAYS * 864e5;
   out.viewer = { isTeam, isMentor, isAdmin, canEdit: !!req.user && canEdit(project, req.user) };
   out.code = code;
+  out.lotus = await lotusSummary.forProject(project);   // petals + viva per member, public-safe
   res.json(out);
 };
 

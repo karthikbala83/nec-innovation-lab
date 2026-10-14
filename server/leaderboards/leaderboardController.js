@@ -10,6 +10,7 @@ const BOARDS = {
   lab: { label: 'Lab Score', sort: { 'labScore.total': -1 }, has: { 'labScore.total': { $gt: 0 } } },
   backed: { label: 'Most backed', sort: { 'counts.backers': -1, 'labScore.total': -1 }, has: { 'counts.backers': { $gt: 0 } } },
   active: { label: 'Most active repo', sort: { 'repo.commitsLast30d': -1, 'labScore.total': -1 }, has: { 'repo.commitsLast30d': { $gt: 0 } } },
+  lotus: { label: 'Highest Lotus average', sort: { 'lotus.teamPercent': -1, 'lotus.vivas': -1 }, has: { 'lotus.taken': { $gt: 0 } } },
   uptime: { label: 'Best uptime', sort: { 'live.uptime30d': -1, 'labScore.total': -1 }, has: { 'live.uptime30d': { $ne: null, $exists: true } } },
 };
 
@@ -25,7 +26,7 @@ exports.board = async (req, res) => {
     Project.find(filter)
       .sort(sort)
       .limit(50)
-      .select('title slug tagline thumbnail department category stage counts labScore repo.commitsLast30d repo.lastCommitAt live members')
+      .select('title slug tagline thumbnail department category stage counts labScore repo.commitsLast30d repo.lastCommitAt live members lotus')
       .populate('members.user', 'name handle')
       .lean(),
     Setting.get(),

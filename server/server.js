@@ -50,6 +50,12 @@ app.use('/api/review', trackActivity, require('./review/reviewRoutes'));   // fa
 // ---- P1: startup-portal layer ----
 app.use('/api/leaderboards', require('./leaderboards/leaderboardRoutes'));  // public
 app.use('/api/uploads', protect, require('./uploads/uploadRoutes'));         // S3 presigned uploads
+
+// ---- P2: trust layer ----
+app.use('/api/lotus', protect, require('./lotus/lotusRoutes'));              // Lotus Blossom + viva
+app.use('/api/talent', protect, require('./talent/talentRoutes'));           // recruiter view
+app.use('/api/intros', protect, require('./intros/introRoutes'));            // intro requests
+
 app.use('/api', require('./community/communityRoutes'));                    // back, follow, comments, updates
 
 // ---- 404 + error handler ----

@@ -14,6 +14,7 @@ const MetricDaily = require('../feed/MetricDaily');
 const Backing = require('../community/Backing');
 const Update = require('../updates/Update');
 const Setting = require('../settings/Setting');
+const lotusSummary = require('../lotus/lotusSummary');
 
 const DAY = 864e5;
 const clamp = (x) => Math.max(0, Math.min(1, x));
@@ -21,8 +22,21 @@ const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // ---- the six parts ----
 
-// Lotus Blossom + viva arrive in P2. Until then: 0, clearly labelled.
-const understanding = () => ({ score: 0, pending: true, detail: 'Lotus Blossom check arrives in P2' });
+// Lotus Blossom: team average of every member's weighted score (members who haven't
+// taken it count as 0), plus up to +0.1 for the share of members with a faculty viva.
+const understanding = ({ lotus = [] }) => {
+  if (!lotus.length || lotus.every((m) => m.status === 'not_started')) {
+    return { score: 0, detail: 'No Lotus checks taken yet' };
+  }
+  const n = lotus.length;
+  const avg = lotus.reduce((s, m) => s + (m.percent || 0), 0) / n;
+  const vivas = lotus.filter((m) => m.viva?.done).length;
+  const petals = lotus.reduce((s, m) => s + (m.petalsFilled || 0), 0) / n;
+  return {
+    score: clamp(avg / 100 + 0.1 * (vivas / n)),
+    detail: `Team average ${Math.round(avg)}%, ${petals.toFixed(1)}/8 petals, viva ${vivas}/${n}`,
+  };
+};
 
 // Commits in the last 30 days (20+ = full), how recent the last one is, and how much of the team commits
 const build = ({ commits = [], teamSize = 1 }, now) => {
@@ -97,12 +111,13 @@ const recompute = async (projectId, { weights } = {}) => {
   const now = Date.now();
   const w = weights || (await Setting.get()).scoreWeights;
 
-  const [snap, checks, confirmedPilots, updates60d] = await Promise.all([
+  const [snap, checks, confirmedPilots, updates60d, lotus] = await Promise.all([
     RepoSnapshot.findOne({ project: project._id }).select('commits.date commits.authorLogin').lean(),
     MetricDaily.find({ project: project._id, date: { $gte: new Date(now - 30 * DAY) }, uptimeOk: { $ne: null } })
       .select('uptimeOk').lean(),
     Backing.countDocuments({ project: project._id, type: 'pilot', status: 'confirmed' }),
     Update.countDocuments({ project: project._id, createdAt: { $gte: new Date(now - 60 * DAY) } }),
+    lotusSummary.forProject(project),
   ]);
 
   const commits = snap?.commits || [];
@@ -118,6 +133,7 @@ const recompute = async (projectId, { weights } = {}) => {
     stage: project.stage,
     confirmedPilots,
     updates60d,
+    lotus,
   }, w, now);
 
   // Keep the commit counters fresh too (they decay without a new import)
@@ -128,6 +144,12 @@ const recompute = async (projectId, { weights } = {}) => {
       'repo.commitsLast7d': since(7),
       'repo.commitsLast30d': since(30),
       'live.uptime30d': result.parts.works.uptime ?? null,
+      lotus: {
+        teamPercent: Math.round(lotus.reduce((s, m) => s + m.percent, 0) / Math.max(1, lotus.length)),
+        petalsAvg: Math.round((lotus.reduce((s, m) => s + m.petalsFilled, 0) / Math.max(1, lotus.length)) * 10) / 10,
+        vivas: lotus.filter((m) => m.viva.done).length,
+        taken: lotus.filter((m) => m.status === 'scored').length,
+      },
     },
   });
   return result;

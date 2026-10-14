@@ -20,6 +20,11 @@ exports.overview = async (req, res) => {
   res.json({
     weights: settings.scoreWeights,
     lastDailyChecks: settings.jobs?.dailyChecksAt || null,
+    lotus: {
+      usage: settings.lotusUsage?.month === new Date().toISOString().slice(0, 7) ? settings.lotusUsage : { generated: 0, scored: 0 },
+      quota: Number(process.env.LOTUS_MONTHLY_QUOTA || 500),
+      mock: require('../services/lotusClient').useMock(),
+    },
     pilots,
     reported: reported.map((c) => ({ ...c, reports: c.reports.length })),
   });

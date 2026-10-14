@@ -74,6 +74,21 @@ const repoSnapshotSchema = new mongoose.Schema(
       preview: String,      // masked: "AKIA****"
     }],
 
+    // Duplicate check (projects/duplicateCheck.js) — mentor/admin only, never public
+    duplicate: {
+      checkedAt: Date,
+      considered: Number,          // distinctive files compared
+      flagged: Boolean,            // any match >= 60%
+      matches: [{
+        _id: false,
+        project: { type: ObjectId, ref: 'Project' },
+        overlap: Number,           // % of this project's distinctive files found there
+        sharedFiles: Number,
+        samplePaths: [String],
+        otherRepoCreatedAt: Date,  // helps the mentor see who was first
+      }],
+    },
+
     fetchedAt: { type: Date, default: Date.now },   // cache clock
     durationMs: Number,
     apiCalls: Number,

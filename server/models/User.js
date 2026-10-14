@@ -23,8 +23,9 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'Password must be at least 6 characters'],
       select: false,         // never returned in queries unless explicitly asked
     },
-    // student by default; an admin promotes faculty (never self-chosen at signup)
-    role: { type: String, enum: ['student', 'faculty', 'admin'], default: 'student', index: true },
+    // student by default; an admin promotes faculty (never self-chosen at signup).
+    // recruiter accounts are created by the placement cell (admin), never by signup.
+    role: { type: String, enum: ['student', 'faculty', 'admin', 'recruiter'], default: 'student', index: true },
 
     // ---- NEC Innovation Lab identity ----
     // handle = public profile URL (/u/<handle>). Email is never shown publicly.
@@ -43,6 +44,7 @@ const userSchema = new mongoose.Schema(
       year: { type: Number, min: 1, max: 4, default: 2 },
       batch: { type: String, trim: true, match: [/^\d{4}-\d{4}$/, 'Batch looks like 2023-2027'] },
       rollNo: { type: String, trim: true, uppercase: true, maxlength: 20 },   // never public
+      company: { type: String, trim: true, maxlength: 80 },                   // recruiters
       skills: [{ type: String }],              // array inside the document
       social: {
         github: String,
@@ -100,11 +102,11 @@ userSchema.methods.toAuthJSON = function () {
   return { id: this._id, name: this.name, email: this.email, role: this.role, handle: this.handle };
 };
 
-userSchema.methods.createResetToken = function () {
+userSchema.methods.createResetToken = function (ttlMinutes = 15) {
   const raw = crypto.randomBytes(32).toString('hex');
   // store only the HASH of the token — same principle as passwords
   this.resetPasswordToken = crypto.createHash('sha256').update(raw).digest('hex');
-  this.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+  this.resetPasswordExpires = Date.now() + ttlMinutes * 60 * 1000; // 15 minutes unless told otherwise
   return raw; // the raw token goes to the user, hash stays in DB
 };
 

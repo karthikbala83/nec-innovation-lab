@@ -124,6 +124,14 @@ const projectSchema = new mongoose.Schema(
       updates: { type: Number, default: 0 },
     },
 
+    // ---- Lotus Blossom team summary (kept by score/labScore.js; public-safe) ----
+    lotus: {
+      teamPercent: { type: Number, default: 0 },
+      petalsAvg: { type: Number, default: 0 },
+      vivas: { type: Number, default: 0 },   // members with a faculty viva
+      taken: { type: Number, default: 0 },   // members with scored answers
+    },
+
     // ---- Lab Score 0–100 with every part visible (score/labScore.js) ----
     labScore: {
       total: { type: Number, default: 0, index: true },

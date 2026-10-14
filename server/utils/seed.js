@@ -1,9 +1,10 @@
 // Run: npm run seed      (WIPES users, sessions, notes, projects, snapshots, metrics,
-//                        backings, follows, comments, updates, settings)
+//                        backings, follows, comments, updates, settings, Lotus, intros)
 // Creates 1 admin, 2 faculty mentors, 7 students, 3 published demo
 // projects and 1 project waiting in the mentor queue. Repo snapshots
 // are fixtures (no GitHub calls), so seeding works offline.
 require('dotenv').config();
+const crypto = require('crypto');
 const User = require('../models/User');
 const Note = require('../models/Note');
 const Session = require('../models/Session');
@@ -17,6 +18,11 @@ const Update = require('../updates/Update');
 const Setting = require('../settings/Setting');
 const { mapMembers, weeklyCounts, summarise } = require('../projects/repoImport');
 const { recompute } = require('../score/labScore');
+const LotusSet = require('../lotus/LotusSet');
+const LotusAttempt = require('../lotus/LotusAttempt');
+const IntroRequest = require('../intros/IntroRequest');
+const { mock: lotusMock } = require('../services/lotusClient');
+const { checkDuplicates } = require('../projects/duplicateCheck');
 
 const DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'nandhaengg.org').split(',')[0].trim();
 const mail = (local) => `${local}@${DOMAIN}`;
@@ -54,7 +60,11 @@ const snapshotFor = (project, members, spec) => {
     languages: spec.languages,
     stack: spec.stack,
     tree,
-    fileHashes: tree.map((f, i) => ({ path: f.path, sha: (i + 1).toString(16).padStart(40, 'a') })),
+    // git-like blob hash per file; files "copied" from another repo get that repo's hash
+    fileHashes: tree.map((f) => ({
+      path: f.path,
+      sha: crypto.createHash('sha1').update(`${(spec.copied || []).includes(f.path) ? spec.copiedFrom : spec.name}:${f.path}`).digest('hex'),
+    })),
     skipped: { count: spec.skipped, reasons: { node_modules: spec.skipped - 3, lockfile: 2, binary: 1 } },
     treeTruncated: false,
     keyFiles: [{ path: 'README.md', size: 1200, content: `# ${project.title}\n\n${project.tagline}` }],
@@ -76,8 +86,10 @@ const run = async () => {
     User.deleteMany(), Note.deleteMany(), Session.deleteMany(),
     Project.deleteMany(), RepoSnapshot.deleteMany(), MetricDaily.deleteMany(),
     Backing.deleteMany(), Follow.deleteMany(), Comment.deleteMany(), Update.deleteMany(), Setting.deleteMany(),
+    LotusSet.deleteMany(), LotusAttempt.deleteMany(), IntroRequest.deleteMany(),
   ]);
-  await Promise.all([User, Project, RepoSnapshot, MetricDaily, Backing, Follow, Comment, Update, Setting].map((M) => M.syncIndexes()));
+  await Promise.all([User, Project, RepoSnapshot, MetricDaily, Backing, Follow, Comment, Update, Setting, LotusSet, LotusAttempt, IntroRequest]
+    .map((M) => M.syncIndexes()));
   await Setting.get();   // default Lab Score weights
 
   await User.create({ name: 'Portal Admin', email: mail('innovationlab.admin'), password: 'admin123', role: 'admin', verified: true });
@@ -190,7 +202,12 @@ const run = async () => {
       owner: 'nec-demo', name: 'mess-feedback-bot', logins: ['karthikm'], commits: 23, days: 20, stars: 2,
       topics: ['whatsapp-bot'], languages: { JavaScript: 34000 },
       stack: ['Express', 'MongoDB', 'Node.js'], skipped: 610,
-      files: ['index.js', 'bot/flows.js', 'models/Rating.js', 'dashboard/index.html', 'README.md'],
+      // Demo for the duplicate check: 7 of its 10 files are byte-identical to CampusBus Live
+      files: ['index.js', 'bot/flows.js', 'README.md', 'server/server.js', 'server/controllers/busController.js', 'server/models/Bus.js',
+        'server/sockets/gps.js', 'client/src/pages/RouteMap.jsx', 'client/src/pages/DriverApp.jsx', 'client/src/api/axios.js'],
+      copiedFrom: 'campusbus-live',
+      copied: ['server/server.js', 'server/controllers/busController.js', 'server/models/Bus.js', 'server/sockets/gps.js',
+        'client/src/pages/RouteMap.jsx', 'client/src/pages/DriverApp.jsx', 'client/src/api/axios.js'],
     }],
   ];
   for (const [project, spec] of specs) {
@@ -198,6 +215,7 @@ const run = async () => {
     const snap = await RepoSnapshot.create(snapshotFor(project, project.members, spec));
     await summarise(project, snap);
   }
+  for (const snap of await RepoSnapshot.find()) await checkDuplicates(snap);
 
   // ---- Views over the last 10 days (drives the Trending tab) ----
   const views = [[bus, 40], [krishi, 25], [medi, 6]];
@@ -274,6 +292,48 @@ const run = async () => {
   }
   await Project.updateOne({ _id: bus._id }, { $set: { live: { checkedAt: new Date(), ok: true, status: 200 } } });
 
+  // ---- P2: Lotus checks (demo data from the MOCK — labelled [MOCK] everywhere) ----
+  const ANSWER = {
+    long: (q) => `In ${q.filePath} the code handles this step: it validates the input, calls the model layer and returns JSON. `
+      + 'To change it I would add a parameter, update the query and write a test for the new case. '
+      + 'The trade-off is an extra database round trip, which I would cache for 60 seconds.',
+    short: (q) => `It is in ${q.filePath}; it handles the request.`,
+  };
+  const lotusFor = async (project, student, { answered, style, viva }) => {
+    await project.populate('members.user', 'githubUsername');
+    const snap = await RepoSnapshot.findOne({ project: project._id });
+    const stats = snap.memberStats.find((m) => String(m.user) === String(student._id));
+    const gen = lotusMock.questions({ repo: { tree: snap.tree.map((f) => f.path), memberFiles: stats?.files || [] } });
+    const set = await LotusSet.create({
+      project: project._id, user: student._id, snapshotSha: snap.sha, externalId: gen.setId, status: 'ready', mock: true,
+      generatedAt: daysAgo(6), questions: gen.questions.map((q) => ({ qid: q.id, petal: q.petal, level: q.level, text: q.text, filePath: q.filePath })),
+    });
+    const answers = set.questions.map((q, i) => ({ qid: q.qid, answer: i < answered ? ANSWER[typeof style === 'function' ? style(i) : style](q) : '' }));
+    if (answered === 0) { await LotusAttempt.create({ set: set._id, project: project._id, user: student._id, answers }); return; }
+    const { scores } = lotusMock.scores({ answers: answers.map((a) => ({ questionId: a.qid, answer: a.answer })) });
+    answers.forEach((a, i) => { a.aiScore = scores[i].score; a.aiFeedback = scores[i].feedback; });
+    await LotusAttempt.create({
+      set: set._id, project: project._id, user: student._id, answers, status: 'scored', submittedAt: daysAgo(5), scoredAt: daysAgo(5),
+      summary: LotusAttempt.summarise(set.questions, answers),
+      viva: viva ? { done: true, by: viva._id, at: daysAgo(2), note: 'Clear on the data flow; revisit indexing.' } : { done: false },
+    });
+  };
+  await lotusFor(bus, arun, { answered: 24, style: 'long', viva: drRamesh });                          // 8/8, Verified
+  await lotusFor(bus, karthik, { answered: 18, style: (i) => (i % 3 ? 'long' : 'short') });             // partial, no viva yet
+  await lotusFor(krishi, divya, { answered: 24, style: (i) => (i % 4 ? 'long' : 'short'), viva: drLakshmi });
+  await lotusFor(krishi, suresh, { answered: 0, style: 'long' });                                       // started, not submitted
+  await lotusFor(medi, priya, { answered: 20, style: 'long' });
+
+  // ---- P2: a recruiter (invited by the placement cell) and one intro request ----
+  const recruiter = await User.create({
+    name: 'Meera Iyer', email: 'meera.iyer@kaveri-labs.example', password: 'recruiter123', role: 'recruiter', verified: true,
+    profile: { company: 'Kaveri Software Labs (demo)' },
+  });
+  await IntroRequest.create([
+    { from: recruiter._id, student: arun._id, project: bus._id, purpose: 'internship', message: 'Summer internship on our logistics team (Chennai, 8 weeks). Liked the live GPS work and the viva result.' },
+    { from: recruiter._id, project: krishi._id, purpose: 'pilot', message: 'Our agri client in Erode may pilot this on 5 acres.', status: 'forwarded', placementNote: 'Team informed; faculty mentor will join the first call.' },
+  ]);
+
   for (const p of [bus, krishi, medi]) await recompute(p._id);
 
   // ---- A few notes so the starter's admin dashboard still has data ----
@@ -284,7 +344,9 @@ const run = async () => {
   faculty  ${mail('ramesh.cse')}, ${mail('lakshmi.ece')} / faculty123
   students ${mail('arun.k')}, ${mail('priya.s')}, ${mail('karthik.m')}, ${mail('divya.r')}… / student123
   3 published projects + 1 waiting in Dr. Ramesh's review queue
-  P1: backers, follows, comments (1 reported), updates, 1 pending pilot, Lab Scores computed`);
+  P1: backers, follows, comments (1 reported), updates, 1 pending pilot, Lab Scores computed
+  P2: Lotus (mock) for 5 students, 2 vivas; recruiter meera.iyer@kaveri-labs.example / recruiter123;
+      2 intro requests; the queued project is flagged as 70% identical to CampusBus Live`);
   process.exit(0);
 };
 

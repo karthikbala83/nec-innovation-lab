@@ -3,6 +3,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Session = require('../models/Session');
 
+// CLIENT_URL may list several origins; links in messages use the first one
+const clientUrl = () => (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, '');
+exports.clientUrl = clientUrl;
+
 // helper: sign a JWT that carries BOTH user id and session id
 const signToken = (userId, sessionId) =>
   jwt.sign({ id: userId, sid: sessionId }, process.env.JWT_SECRET, {
@@ -80,7 +84,7 @@ exports.forgotPassword = async (req, res) => {
   const rawToken = user.createResetToken();
   await user.save({ validateBeforeSave: false });
 
-  const resetLink = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+  const resetLink = `${clientUrl()}/reset-password/${rawToken}`;
   // PRODUCTION: email this link (nodemailer / SES / Resend).
   // CLASSROOM: we log it + return it so the flow is fully demonstrable.
   console.log('Password reset link:', resetLink);

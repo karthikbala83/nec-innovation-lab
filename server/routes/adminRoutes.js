@@ -2,6 +2,7 @@ const router = require('express').Router();
 const wrap = require('../utils/asyncHandler');
 const c = wrap(require('../controllers/adminController'));
 const lab = wrap(require('../controllers/labAdminController'));
+const intros = wrap(require('../intros/introController'));
 const { adminOnly } = require('../middleware/auth');
 
 router.use(adminOnly);              // everything below is admin-only
@@ -14,5 +15,10 @@ router.get('/lab', lab.overview);
 router.put('/lab/weights', lab.setWeights);
 router.post('/backings/:id/decide', lab.decidePilot);
 router.post('/jobs/daily-checks', lab.runChecks);
+
+// Recruiters & intro requests — the placement cell (P2)
+router.post('/recruiters', c.createRecruiter);
+router.get('/intros', intros.list);
+router.patch('/intros/:id', intros.decide);
 
 module.exports = router;

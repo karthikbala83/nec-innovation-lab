@@ -3,7 +3,9 @@
 // Every endpoint here is an aggregation pipeline:
 //   $match -> $lookup (JOIN) -> $unwind -> $group -> $project
 // ---------------------------------------------------------------
+const crypto = require('crypto');
 const User = require('../models/User');
+const { clientUrl } = require('./authController');
 const Note = require('../models/Note');
 const Session = require('../models/Session');
 
@@ -97,6 +99,29 @@ exports.dashboard = async (req, res) => {
   });
 };
 
+// POST /api/admin/recruiters  { name, email, company }
+// Placement cell invites a recruiter. Returns a one-time set-password link
+// (valid 7 days) for the admin to send — recruiters never sign up themselves.
+exports.createRecruiter = async (req, res) => {
+  const { name, email, company } = req.body;
+  if (!name || !email || !company) return res.status(400).json({ message: 'Name, email and company are required' });
+  if (User.isCollegeEmail(email)) return res.status(400).json({ message: 'Use the recruiter\'s company email, not a college one' });
+  if (await User.exists({ email: String(email).toLowerCase().trim() })) return res.status(409).json({ message: 'That email already has an account' });
+
+  const user = new User({
+    name, email, role: 'recruiter', verified: true,
+    password: crypto.randomBytes(24).toString('base64url'),   // unknown to anyone; replaced via the link
+    profile: { company, department: undefined, year: undefined },
+  });
+  const raw = user.createResetToken(7 * 24 * 60);
+  await user.save();
+  res.status(201).json({
+    id: user._id,
+    setPasswordLink: `${clientUrl()}/reset-password/${raw}`,
+    expiresAt: user.resetPasswordExpires,
+  });
+};
+
 // PATCH /api/admin/users/:id  { role?, verified? }
 // Admin promotes faculty and marks students verified (roll number checked).
 exports.updateUser = async (req, res) => {
@@ -104,7 +129,8 @@ exports.updateUser = async (req, res) => {
   const user = await User.findById(req.params.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
   if (role !== undefined) {
-    if (!['student', 'faculty', 'admin'].includes(role)) return res.status(400).json({ message: 'Unknown role' });
+    if (!['student', 'faculty', 'admin'].includes(role)) return res.status(400).json({ message: 'Unknown role (recruiters are invited separately)' });
+    if (user.role === 'recruiter') return res.status(400).json({ message: 'Recruiter accounts keep the recruiter role' });
     if (String(user._id) === String(req.user._id) && role !== 'admin')
       return res.status(400).json({ message: 'You cannot remove your own admin role' });
     user.role = role;
@@ -118,7 +144,7 @@ exports.updateUser = async (req, res) => {
 exports.listUsers = async (req, res) => {
   const { page = 1, limit = 10, q, role } = req.query;
   const match = {};
-  if (['student', 'faculty', 'admin'].includes(role)) match.role = role;
+  if (['student', 'faculty', 'admin', 'recruiter'].includes(role)) match.role = role;
   if (q) {
     const re = new RegExp(String(q).slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     match.$or = [{ name: re }, { email: re }, { 'profile.rollNo': re }];
@@ -139,6 +165,7 @@ exports.listUsers = async (req, res) => {
         'profile.rollNo': 1,
         'profile.batch': 1,
         'profile.department': 1,
+        'profile.company': 1,
         'profile.year': 1,
         'profile.skills': 1,
         noteCount: { $size: '$notes' },
