@@ -74,6 +74,18 @@ Details: [docs/STARTER.md](docs/STARTER.md). **Deploying (Netlify + Railway + At
 | Recruiter | `/talent` | Students by stack, stage, department, Lotus petals, viva-verified; **Request intro** goes to the placement cell |
 | Placement cell (admin) | `/admin/people`, `/admin/intros` | Invite recruiters (one-time set-password link); forward / decline intro requests |
 
+## Likes, feedback & project requests
+
+| Who | What |
+|---|---|
+| Anyone with the link (no account) | ♡ **Like**; **Give feedback** (1–5 stars) or **Need one like this?** (a project request) after giving name, email and mobile — the email is proved with a 6-digit code |
+| Classmates / faculty (signed in) | Feedback straight away — the college account is the proof |
+| Team | **Share for feedback** (WhatsApp / copy link); `/inbox` with replies; replies are emailed to the sender through the portal |
+| Sender | Gets a private link by email to read replies and answer back — no account |
+| Admin | `/admin/moderation`: messages the content check held back; deliver or reject |
+
+**Content check** (`server/moderation/contentCheck.js`, word lists in `wordlists.js`): runs before anything is stored or emailed. Rejects abuse (English, Tamil and Hindi in Latin letters, leetspeak), harassment, threats, scams/adverts, phone numbers / emails / social handles in the message, repeated text. Holds for an admin: off-topic messages, a link, mild insults, shouting, Tamil-script text. Comments and replies use the same rules. Students never see a visitor's email or phone, and visitors never see a student's. Email goes through Resend (`RESEND_API_KEY`, `MAIL_FROM`).
+
 Lotus runs at Saravonix (`LOTUS_API_URL`, `LOTUS_API_KEY`); this repo only holds the thin client `server/services/lotusClient.js`. Contract: [docs/LOTUS_API.md](docs/LOTUS_API.md). In development a clearly labelled mock stands in.
 
 **Lab Score** (`server/score/labScore.js`): Understanding 35 (team's Lotus average, members who haven't taken it count 0, + up to 10 for vivas) · Build activity 15 · It works 15 · Community 15 · Recognition 15 · Freshness 5. Weights live in the `settings` collection.

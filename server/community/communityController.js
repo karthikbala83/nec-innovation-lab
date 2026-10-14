@@ -9,6 +9,7 @@ const Follow = require('./Follow');
 const Comment = require('./Comment');
 const User = require('../models/User');
 const { recomputeSoon } = require('../score/labScore');
+const { checkMessage } = require('../moderation/contentCheck');
 
 const COMMENTS_PER_10_MIN = 10;
 
@@ -179,6 +180,9 @@ exports.addComment = async (req, res) => {
   const project = await publishedProject(req.params.id);
   const recent = await Comment.countDocuments({ user: req.user._id, createdAt: { $gte: new Date(Date.now() - 10 * 60 * 1000) } });
   if (recent >= COMMENTS_PER_10_MIN) throw fail(429, 'Slow down — try again in a few minutes');
+
+  const check = checkMessage(req.body.body, { kind: 'comment', skipRelevance: true, minLength: 2 });
+  if (check.verdict !== 'pass') throw Object.assign(new Error(check.reasons[0]), { status: 400, reasons: check.reasons });
 
   let parent = null;
   if (req.body.parent) {

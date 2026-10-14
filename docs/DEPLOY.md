@@ -102,7 +102,10 @@ UAT has been seeded (demo users + 4 projects). **Never run `npm run seed` agains
    LOTUS_API_URL=<from Saravonix>
    LOTUS_API_KEY=<from Saravonix>
    LOTUS_MONTHLY_QUOTA=500
+   RESEND_API_KEY=<from resend.com → API Keys>
+   MAIL_FROM=NEC Innovation Lab <noreply@<your-verified-domain>>
    ```
+   **Resend:** add and verify a domain (resend.com → Domains → add DNS records). Until then, the test sender `onboarding@resend.dev` only delivers to the email you signed up to Resend with — fine for a smoke test, not for students or visitors. Emails sent: visitor 6-digit codes, new feedback/request alerts to the project owner, replies both ways, password reset, recruiter invites.
    Until Saravonix issues the Lotus URL/key, add `LOTUS_MOCK=true` so the Lotus pages work on UAT (questions are labelled `[MOCK]`). Remove it for production.
    Do **not** set `PORT` — Railway provides it.
    Generate the JWT secret locally:
@@ -136,7 +139,8 @@ GitHub token: github.com → Settings → Developer settings → Fine-grained to
 
 1. `https://<site>.netlify.app` → feed shows 3 projects; open one, refresh the page (SPA redirect works).
 2. Recruiter flow: Admin → People → *Invite a recruiter* → open the set-password link in a private window → Talent → Request intro → back as admin: Admin → Intro requests → Forward.
-3. Log in as the seeded admin → **Admin → Lab Score & moderation → Run daily checks now** → "1/1 live URLs up".
+3. Likes & feedback: open a project in a private window (no login) → ♡ Like → *Give feedback* → enter name/email/mobile → code arrives by email → send. Log in as the owner → Inbox → reply; the visitor gets an email with a private link to reply back. Admin → Feedback moderation shows held messages.
+4. Log in as the seeded admin → **Admin → Lab Score & moderation → Run daily checks now** → "1/1 live URLs up".
 3. Log in as a seeded student → My projects → Edit → *Proof & media* → **Upload thumbnail** → image appears; its URL starts with your S3 / CloudFront base.
 4. Sign up with a `@gmail.com` address → refused; with `@nandhaengg.org` → works.
 5. `/leaderboards`, `/u/arun-k` (QR) load without login.

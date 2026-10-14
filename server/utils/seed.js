@@ -1,5 +1,6 @@
 // Run: npm run seed      (WIPES users, sessions, notes, projects, snapshots, metrics,
-//                        backings, follows, comments, updates, settings, Lotus, intros)
+//                        backings, follows, comments, updates, settings, Lotus, intros,
+//                        likes, feedback & requests)
 // Creates 1 admin, 2 faculty mentors, 7 students, 3 published demo
 // projects and 1 project waiting in the mentor queue. Repo snapshots
 // are fixtures (no GitHub calls), so seeding works offline.
@@ -23,6 +24,8 @@ const LotusAttempt = require('../lotus/LotusAttempt');
 const IntroRequest = require('../intros/IntroRequest');
 const { mock: lotusMock } = require('../services/lotusClient');
 const { checkDuplicates } = require('../projects/duplicateCheck');
+const Like = require('../feedback/Like');
+const Feedback = require('../feedback/Feedback');
 
 const DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || 'nandhaengg.org').split(',')[0].trim();
 const mail = (local) => `${local}@${DOMAIN}`;
@@ -86,9 +89,9 @@ const run = async () => {
     User.deleteMany(), Note.deleteMany(), Session.deleteMany(),
     Project.deleteMany(), RepoSnapshot.deleteMany(), MetricDaily.deleteMany(),
     Backing.deleteMany(), Follow.deleteMany(), Comment.deleteMany(), Update.deleteMany(), Setting.deleteMany(),
-    LotusSet.deleteMany(), LotusAttempt.deleteMany(), IntroRequest.deleteMany(),
+    LotusSet.deleteMany(), LotusAttempt.deleteMany(), IntroRequest.deleteMany(), Like.deleteMany(), Feedback.deleteMany(),
   ]);
-  await Promise.all([User, Project, RepoSnapshot, MetricDaily, Backing, Follow, Comment, Update, Setting, LotusSet, LotusAttempt, IntroRequest]
+  await Promise.all([User, Project, RepoSnapshot, MetricDaily, Backing, Follow, Comment, Update, Setting, LotusSet, LotusAttempt, IntroRequest, Like, Feedback]
     .map((M) => M.syncIndexes()));
   await Setting.get();   // default Lab Score weights
 
@@ -334,6 +337,42 @@ const run = async () => {
     { from: recruiter._id, project: krishi._id, purpose: 'pilot', message: 'Our agri client in Erode may pilot this on 5 acres.', status: 'forwarded', placementNote: 'Team informed; faculty mentor will join the first call.' },
   ]);
 
+  // ---- Likes (visitors via shared links + students) and feedback / requests ----
+  const visitorLikes = { [bus._id]: 41, [krishi._id]: 27, [medi._id]: 9 };
+  const likeRows = [];
+  for (const p of [bus, krishi, medi]) {
+    for (let i = 0; i < visitorLikes[p._id]; i++) likeRows.push({ project: p._id, visitor: crypto.createHash('sha256').update(`demo-${p.slug}-${i}`).digest('hex') });
+    crowd.slice(0, 4).forEach((u) => likeRows.push({ project: p._id, user: u._id }));
+  }
+  await Like.insertMany(likeRows);
+  for (const p of [bus, krishi, medi]) await Project.updateOne({ _id: p._id }, { $set: { 'counts.likes': await Like.countDocuments({ project: p._id }) } });
+
+  const visitor = (name, email, phone, relation, organisation) => ({ name, email, phone, relation, organisation });
+  await Feedback.create([
+    { project: krishi._id, kind: 'feedback', status: 'delivered', rating: 5, createdAt: daysAgo(2),
+      from: { user: crowd[1]._id, name: crowd[1].name, email: crowd[1].email, relation: 'classmate' },
+      message: 'Loved the field trial numbers. The Flutter app could show a weekly water-saved chart so farmers see the benefit.',
+      check: { verdict: 'pass', reasons: [] } },
+    { project: krishi._id, kind: 'feedback', status: 'delivered', rating: 4, createdAt: daysAgo(1),
+      from: visitor('Selvi R', 'selvi.r@example.com', '9876500011', 'visitor'),
+      message: 'My father farms turmeric near Bhavani. The valve idea is great — is there an SMS mode for when mobile data is weak?',
+      check: { verdict: 'pass', reasons: [] } },
+    { project: krishi._id, kind: 'request', status: 'delivered', createdAt: daysAgo(3),
+      from: visitor('Prakash M', 'prakash@greenrow-demo.example', '9876500022', 'industry', 'GreenRow Agro (demo)'),
+      message: 'We need a similar drip controller for 12 acres of banana with 4 zones. Can your team build a custom version? Pilot in January.',
+      request: { timeline: '3 months', budget: '₹1–1.5 lakh' },
+      check: { verdict: 'pass', reasons: [] },
+      thread: [{ by: 'team', user: divya._id, body: 'Thank you! Four zones is doable with one ESP32 per two zones. Could you share the pump rating and water source?', at: daysAgo(2) }] },
+    { project: bus._id, kind: 'feedback', status: 'delivered', rating: 5, createdAt: daysAgo(1),
+      from: { user: crowd[4]._id, name: crowd[4].name, email: crowd[4].email, relation: 'classmate' },
+      message: 'Route 7 ETA was spot on this week. Please add a dark mode for the evening buses.',
+      check: { verdict: 'pass', reasons: [] } },
+    { project: bus._id, kind: 'feedback', status: 'held', createdAt: daysAgo(0),
+      from: visitor('Unknown', 'someone@example.com', '9876500033', 'visitor'),
+      message: 'Hello there how are you doing today friend',
+      check: { verdict: 'hold', reasons: ['Doesn\'t seem to be about this project'] } },
+  ]);
+
   for (const p of [bus, krishi, medi]) await recompute(p._id);
 
   // ---- A few notes so the starter's admin dashboard still has data ----
@@ -346,7 +385,8 @@ const run = async () => {
   3 published projects + 1 waiting in Dr. Ramesh's review queue
   P1: backers, follows, comments (1 reported), updates, 1 pending pilot, Lab Scores computed
   P2: Lotus (mock) for 5 students, 2 vivas; recruiter meera.iyer@kaveri-labs.example / recruiter123;
-      2 intro requests; the queued project is flagged as 70% identical to CampusBus Live`);
+      2 intro requests; the queued project is flagged as 70% identical to CampusBus Live
+  Likes on all 3; 4 feedback + 1 project request (with a reply) delivered; 1 message held for moderation`);
   process.exit(0);
 };
 

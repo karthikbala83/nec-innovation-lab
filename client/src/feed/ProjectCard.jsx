@@ -32,7 +32,7 @@ export default function ProjectCard({ project, extra, index = 0 }) {
           <AvatarStack members={p.members} />
           <span className="muted small">
             {p.labScore?.total > 0 && <span className="score-chip" title="Lab Score">★ {p.labScore.total}</span>}
-            {' '}👁 {p.counts?.views || 0}
+            {' '}♥ {p.counts?.likes || 0} · 👁 {p.counts?.views || 0}
           </span>
         </div>
         {extra}

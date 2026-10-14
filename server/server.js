@@ -56,6 +56,9 @@ app.use('/api/lotus', protect, require('./lotus/lotusRoutes'));              // 
 app.use('/api/talent', protect, require('./talent/talentRoutes'));           // recruiter view
 app.use('/api/intros', protect, require('./intros/introRoutes'));            // intro requests
 
+// ---- Likes, feedback & project requests (open to visitors with the link) ----
+app.use('/api', require('./feedback/feedbackRoutes'));
+
 app.use('/api', require('./community/communityRoutes'));                    // back, follow, comments, updates
 
 // ---- 404 + error handler ----

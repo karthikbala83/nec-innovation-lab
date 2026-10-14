@@ -7,7 +7,10 @@ module.exports = (err, req, res, next) => {
   }
   if (err.name === 'CastError') return res.status(400).json({ message: `Invalid ${err.path}` });
   if (err.code === 11000) return res.status(409).json({ message: 'That already exists' });
-  if (err.status && err.status < 500) return res.status(err.status).json({ message: err.message });
+  if (err.status && err.status < 500) {
+    // reasons/errors: content-check and form-field details the client shows next to the form
+    return res.status(err.status).json({ message: err.message, ...(err.reasons && { reasons: err.reasons }), ...(err.errors && { errors: err.errors }) });
+  }
   if (err.status === 502) return res.status(502).json({ message: err.message });   // GitHub hiccup
 
   console.error(err.stack);

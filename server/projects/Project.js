@@ -119,6 +119,7 @@ const projectSchema = new mongoose.Schema(
       backersCollege: { type: Number, default: 0 },
       backersPublic: { type: Number, default: 0 },
       followers: { type: Number, default: 0 },
+      likes: { type: Number, default: 0 },          // anyone, incl. visitors without an account
       views: { type: Number, default: 0 },
       comments: { type: Number, default: 0 },
       updates: { type: Number, default: 0 },

@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Session = require('../models/Session');
+const { send } = require('../services/mailer');
 
 // CLIENT_URL may list several origins; links in messages use the first one
 const clientUrl = () => (process.env.CLIENT_URL || 'http://localhost:5173').split(',')[0].trim().replace(/\/+$/, '');
@@ -85,9 +86,15 @@ exports.forgotPassword = async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   const resetLink = `${clientUrl()}/reset-password/${rawToken}`;
-  // PRODUCTION: email this link (nodemailer / SES / Resend).
-  // CLASSROOM: we log it + return it so the flow is fully demonstrable.
-  console.log('Password reset link:', resetLink);
+  // Emailed through Resend (services/mailer.js). In development without a key the
+  // mailer prints it, and the link is also returned so the flow is demonstrable.
+  await send({
+    to: user.email,
+    subject: 'Reset your NEC Innovation Lab password',
+    heading: 'Reset your password',
+    paragraphs: ['Someone (hopefully you) asked to reset your password. The link works for 15 minutes.', 'If it wasn\'t you, ignore this email.'],
+    cta: { label: 'Choose a new password', url: resetLink },
+  }).catch((err) => console.error('Reset mail failed:', err.message));
   const payload = { message: 'If that email exists, a reset link was sent' };
   if (process.env.NODE_ENV !== 'production') payload.devResetLink = resetLink;
   res.json(payload);

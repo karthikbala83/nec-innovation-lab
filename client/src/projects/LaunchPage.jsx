@@ -7,6 +7,7 @@ import {
   timeAgo, youTubeId, errorText,
 } from '../components/ui.jsx';
 import BackFollowBar from '../community/BackFollowBar.jsx';
+import EngageBar from '../feedback/EngageBar.jsx';
 import Backers from '../community/Backers.jsx';
 import Comments from '../community/Comments.jsx';
 import Timeline from '../updates/Timeline.jsx';
@@ -90,6 +91,7 @@ export default function LaunchPage() {
             {p.publishedAt ? `Launched ${timeAgo(p.publishedAt)}` : 'Not launched yet'} · 👁 {p.counts?.views || 0} views
           </p>
           <BackFollowBar project={p} onCounts={() => setBackRefresh((n) => n + 1)} />
+          <EngageBar project={p} />
           {p.status === 'published' && <RequestIntro project={p._id} label="Request intro to this team" />}
         </div>
       </header>

@@ -115,6 +115,14 @@ exports.createRecruiter = async (req, res) => {
   });
   const raw = user.createResetToken(7 * 24 * 60);
   await user.save();
+  require('../services/mailer').sendSoon({
+    to: user.email,
+    subject: 'Your NEC Innovation Lab recruiter account',
+    heading: `Welcome, ${name}`,
+    paragraphs: ['The Nandha Engineering College placement cell created a recruiter account for you on NEC Innovation Lab: find students through their verified projects and request intros through the placement cell.',
+      'Set your password within 7 days:'],
+    cta: { label: 'Set my password', url: `${clientUrl()}/reset-password/${raw}` },
+  });
   res.status(201).json({
     id: user._id,
     setPasswordLink: `${clientUrl()}/reset-password/${raw}`,

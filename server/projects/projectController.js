@@ -10,6 +10,7 @@ const User = require('../models/User');
 const { importRepo } = require('./repoImport');
 const { recomputeSoon } = require('../score/labScore');
 const lotusSummary = require('../lotus/lotusSummary');
+const feedbackCtl = require('../feedback/feedbackController');
 
 const PUBLIC_USER = User.PUBLIC_FIELDS;
 const NEW_DAYS = 14;
@@ -151,6 +152,10 @@ exports.getOne = async (req, res) => {
   out.viewer = { isTeam, isMentor, isAdmin, canEdit: !!req.user && canEdit(project, req.user) };
   out.code = code;
   out.lotus = await lotusSummary.forProject(project);   // petals + viva per member, public-safe
+  if (project.status === 'published') {
+    out.viewer.liked = await feedbackCtl.hasLiked(req, project._id);
+    out.feedbackSummary = await feedbackCtl.summary(project._id);   // count + average rating, no text
+  }
   res.json(out);
 };
 

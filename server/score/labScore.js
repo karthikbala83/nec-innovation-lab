@@ -62,10 +62,13 @@ const works = ({ liveUrl, checks = [] }) => {
   return { score: up / checks.length, uptime: pct, detail: `${pct}% up over ${plural(checks.length, 'daily check')}` };
 };
 
-// Backers ×3 + followers ×2 + views ÷20; 150 points = full marks
-const community = ({ backers = 0, followers = 0, views = 0 }) => {
-  const points = backers * 3 + followers * 2 + views / 20;
-  return { score: clamp(points / 150), detail: `${plural(backers, 'backer')}, ${plural(followers, 'follower')}, ${plural(views, 'view')}` };
+// Backers ×3 + followers ×2 + likes ×1 + views ÷20; 150 points = full marks
+const community = ({ backers = 0, followers = 0, likes = 0, views = 0 }) => {
+  const points = backers * 3 + followers * 2 + likes + views / 20;
+  return {
+    score: clamp(points / 150),
+    detail: `${plural(backers, 'backer')}, ${plural(followers, 'follower')}, ${plural(likes, 'like')}, ${plural(views, 'view')}`,
+  };
 };
 
 // Best single achievement counts (not the sum — one real win beats five registrations)
@@ -128,6 +131,7 @@ const recompute = async (projectId, { weights } = {}) => {
     checks: checks.map((c) => c.uptimeOk),
     backers: project.counts.backers,
     followers: project.counts.followers,
+    likes: project.counts.likes || 0,
     views: project.counts.views,
     competitions: project.competitions,
     stage: project.stage,

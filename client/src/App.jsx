@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import Login from './pages/Login.jsx';
@@ -21,6 +21,10 @@ import VivaView from './lotus/VivaView.jsx';
 import Talent from './talent/Talent.jsx';
 import MyIntros from './intros/MyIntros.jsx';
 import Intros from './admin/Intros.jsx';
+import Inbox from './feedback/Inbox.jsx';
+import SenderThread from './feedback/SenderThread.jsx';
+import Moderation from './admin/Moderation.jsx';
+import api from './api/axios';
 
 // Route guards — the frontend half of protection.
 // (The API enforces it too. Never trust only the frontend.)
@@ -49,6 +53,17 @@ export default function App() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const location = useLocation();
+
+  // Unread feedback / requests for students' projects (nav badge)
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (user?.role !== 'student') { setUnread(0); return undefined; }
+    const load = () => api.get('/inbox/unread').then((r) => setUnread(r.data.unread)).catch(() => {});
+    load();
+    window.addEventListener('inbox-read', load);
+    return () => window.removeEventListener('inbox-read', load);
+  }, [user, location.pathname]);
 
   return (
     <>
@@ -61,6 +76,9 @@ export default function App() {
           {user ? (
             <>
               {user.role !== 'recruiter' && <NavLink to="/me/projects">My projects</NavLink>}
+              {user.role === 'student' && (
+                <NavLink to="/inbox">Inbox{unread > 0 && <span className="nav-badge" aria-label={`${unread} unread`}>{unread}</span>}</NavLink>
+              )}
               {['recruiter', 'faculty', 'admin'].includes(user.role) && <NavLink to="/talent">Talent</NavLink>}
               {user.role === 'recruiter' && <NavLink to="/intros">My requests</NavLink>}
               {['faculty', 'admin'].includes(user.role) && <NavLink to="/review">Review</NavLink>}
@@ -98,6 +116,9 @@ export default function App() {
           <Route path="/talent" element={<Protected roles={['recruiter', 'faculty', 'admin']}><Talent /></Protected>} />
           <Route path="/intros" element={<Protected><MyIntros /></Protected>} />
           <Route path="/admin/intros" element={<Protected roles={['admin']}><Intros /></Protected>} />
+          <Route path="/admin/moderation" element={<Protected roles={['admin']}><Moderation /></Protected>} />
+          <Route path="/inbox" element={<Protected><Inbox /></Protected>} />
+          <Route path="/messages/:id" element={<SenderThread />} />
           <Route path="/admin" element={<Protected roles={['admin']}><Admin /></Protected>} />
           <Route path="/admin/people" element={<Protected roles={['admin']}><People /></Protected>} />
           <Route path="/admin/lab" element={<Protected roles={['admin']}><LabAdmin /></Protected>} />
