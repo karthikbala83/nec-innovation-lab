@@ -63,7 +63,20 @@ Details: [docs/STARTER.md](docs/STARTER.md). **Deploying (Netlify + Railway + At
 | Anyone | `/leaderboards` | Lab Score · Most backed · Most active repo · Best uptime, by department |
 | Admin | `/admin/lab` | Score weights (must total 100, re-scores everything), confirm pilots, reported comments, run daily checks |
 
-**Lab Score** (`server/score/labScore.js`): Understanding 35 (Lotus, arrives in P2, scores 0 until then) · Build activity 15 · It works 15 · Community 15 · Recognition 15 · Freshness 5. Weights live in the `settings` collection.
+## P2 at a glance
+
+| Who | Where | What |
+|---|---|---|
+| Student | launch page → *Take your Lotus check* | 24 questions (8 petals × 3 levels) built **from their own code** by the Saravonix Lotus API; answers private; scored 0-3 with feedback |
+| Faculty mentor | `/review` → *Lotus & viva* | Read answers, override scores, mark **viva done** → page shows "Viva by Dr. X on <date>" + Verified |
+| Anyone | launch page, profile | Lotus flower per member (petals filled). Never the answers |
+| Mentor / admin | review queue, launch page | **Duplicate check**: > 60% identical files to another college project is flagged (boilerplate ignored; never public) |
+| Recruiter | `/talent` | Students by stack, stage, department, Lotus petals, viva-verified; **Request intro** goes to the placement cell |
+| Placement cell (admin) | `/admin/people`, `/admin/intros` | Invite recruiters (one-time set-password link); forward / decline intro requests |
+
+Lotus runs at Saravonix (`LOTUS_API_URL`, `LOTUS_API_KEY`); this repo only holds the thin client `server/services/lotusClient.js`. Contract: [docs/LOTUS_API.md](docs/LOTUS_API.md). In development a clearly labelled mock stands in.
+
+**Lab Score** (`server/score/labScore.js`): Understanding 35 (team's Lotus average, members who haven't taken it count 0, + up to 10 for vivas) · Build activity 15 · It works 15 · Community 15 · Recognition 15 · Freshness 5. Weights live in the `settings` collection.
 
 **Daily checks** (`server/jobs/dailyChecks.js`): ping live URLs (private/internal addresses are refused, so students can't use it to probe the network), refresh repos when `GITHUB_TOKEN` is set, re-score everything. Runs inside the API every ~24 h, or `npm run daily` from a cron.
 
