@@ -62,7 +62,7 @@ export default function Feed() {
         </div>
       </section>
 
-      <div className="tabs" role="tablist">
+      <div className="tabs" role="tablist" data-tour="feed-tabs">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id}
             className={tab === t.id ? 'tab active' : 'tab'} onClick={() => setParam('tab', t.id === 'new' ? '' : t.id)}>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Routes, Route, Navigate, Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import Login from './pages/Login.jsx';
@@ -25,6 +25,8 @@ import Inbox from './feedback/Inbox.jsx';
 import SenderThread from './feedback/SenderThread.jsx';
 import Moderation from './admin/Moderation.jsx';
 import api from './api/axios';
+import Tour from './tour/Tour.jsx';
+import { stepsFor, TOUR_VERSION } from './tour/tourSteps.js';
 
 // Route guards — the frontend half of protection.
 // (The API enforces it too. Never trust only the frontend.)
@@ -50,7 +52,7 @@ function BrandMark() {
 }
 
 export default function App() {
-  const { user, logout } = useAuth();
+  const { user, logout, markTourDone } = useAuth();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const location = useLocation();
@@ -65,6 +67,17 @@ export default function App() {
     return () => window.removeEventListener('inbox-read', load);
   }, [user, location.pathname]);
 
+  // First-run app tour: starts once per account (any device), replay with the ? button
+  const [touring, setTouring] = useState(false);
+  const tourSteps = useMemo(() => (user ? stepsFor(user) : []), [user?.role, user?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+  const noTourHere = /^\/(messages|reset-password|login|signup)/.test(location.pathname);
+  useEffect(() => {
+    if (!user || touring || noTourHere || (user.tourVersion || 0) >= TOUR_VERSION) return undefined;
+    const t = setTimeout(() => setTouring(true), 800);
+    return () => clearTimeout(t);
+  }, [user, touring, noTourHere]);
+  const endTour = () => { setTouring(false); markTourDone(TOUR_VERSION); };
+
   return (
     <>
       <nav className="nav">
@@ -72,19 +85,19 @@ export default function App() {
         <button className="menu-btn" aria-expanded={open} aria-label="Menu" onClick={() => setOpen(!open)}>☰</button>
         <div className={open ? 'nav-links open' : 'nav-links'} onClick={close}>
           <NavLink to="/" end>Explore</NavLink>
-          <NavLink to="/leaderboards">Leaderboards</NavLink>
+          <NavLink to="/leaderboards" data-tour="nav-leaderboards">Leaderboards</NavLink>
           {user ? (
             <>
-              {user.role !== 'recruiter' && <NavLink to="/me/projects">My projects</NavLink>}
+              {user.role !== 'recruiter' && <NavLink to="/me/projects" data-tour="nav-myprojects">My projects</NavLink>}
               {user.role === 'student' && (
-                <NavLink to="/inbox">Inbox{unread > 0 && <span className="nav-badge" aria-label={`${unread} unread`}>{unread}</span>}</NavLink>
+                <NavLink to="/inbox" data-tour="nav-inbox">Inbox{unread > 0 && <span className="nav-badge" aria-label={`${unread} unread`}>{unread}</span>}</NavLink>
               )}
-              {['recruiter', 'faculty', 'admin'].includes(user.role) && <NavLink to="/talent">Talent</NavLink>}
-              {user.role === 'recruiter' && <NavLink to="/intros">My requests</NavLink>}
-              {['faculty', 'admin'].includes(user.role) && <NavLink to="/review">Review</NavLink>}
-              {user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
-              {user.handle && ['student', 'faculty'].includes(user.role) && <NavLink to={`/u/${user.handle}`}>Profile</NavLink>}
-              {['student', 'admin'].includes(user.role) && <NavLink to="/projects/new" className="nav-cta">＋ Launch</NavLink>}
+              {['recruiter', 'faculty', 'admin'].includes(user.role) && <NavLink to="/talent" data-tour="nav-talent">Talent</NavLink>}
+              {user.role === 'recruiter' && <NavLink to="/intros" data-tour="nav-requests">My requests</NavLink>}
+              {['faculty', 'admin'].includes(user.role) && <NavLink to="/review" data-tour="nav-review">Review</NavLink>}
+              {user.role === 'admin' && <NavLink to="/admin" data-tour="nav-admin">Admin</NavLink>}
+              {user.handle && ['student', 'faculty'].includes(user.role) && <NavLink to={`/u/${user.handle}`} data-tour="nav-profile">Profile</NavLink>}
+              {['student', 'admin'].includes(user.role) && <NavLink to="/projects/new" className="nav-cta" data-tour="nav-launch">＋ Launch</NavLink>}
               <button className="link-btn" onClick={logout}>Logout</button>
             </>
           ) : (
@@ -128,6 +141,11 @@ export default function App() {
           <Route path="*" element={<div className="card empty"><p>Page not found.</p><Link to="/">Back to projects</Link></div>} />
         </Routes>
       </main>
+
+      {user && !/\/lotus$/.test(location.pathname) && (
+        <button className="tour-fab" data-tour="tour-fab" onClick={() => setTouring(true)} aria-label="Take the app tour" title="Take the app tour">?</button>
+      )}
+      {touring && tourSteps.length > 0 && <Tour steps={tourSteps} onClose={endTour} setMenuOpen={setOpen} />}
     </>
   );
 }

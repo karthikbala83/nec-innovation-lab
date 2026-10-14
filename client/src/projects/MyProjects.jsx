@@ -18,7 +18,7 @@ export default function MyProjects() {
 
   return (
     <div>
-      <div className="row-between">
+      <div className="row-between" data-tour="my-projects">
         <h2>My projects</h2>
         {['student', 'admin'].includes(user.role) && <Link className="btn" to="/projects/new">+ Launch a project</Link>}
       </div>

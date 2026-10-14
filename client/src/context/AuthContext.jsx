@@ -34,8 +34,16 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // App tour finished/skipped: remember locally at once, then on the account (so other devices skip it too)
+  const markTourDone = (version) => {
+    const next = { ...user, tourVersion: Math.max(version, user?.tourVersion || 0) };
+    localStorage.setItem('user', JSON.stringify(next));
+    setUser(next);
+    api.patch('/auth/tour', { version }).catch(() => {});
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, markTourDone }}>
       {children}
     </AuthContext.Provider>
   );

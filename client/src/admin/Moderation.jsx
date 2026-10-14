@@ -24,7 +24,7 @@ export default function Moderation() {
     <div>
       <div className="row-between"><h2>Feedback moderation</h2><Link to="/admin">Dashboard</Link></div>
       <p className="muted small">The content check rejects abuse, spam and contact details outright, and holds anything doubtful here (off-topic, a link, an insult, Tamil text, shouting). Visitor contacts are visible to admins only.</p>
-      <div className="tabs" role="tablist">
+      <div className="tabs" role="tablist" data-tour="moderation-tabs">
         {TABS.map((t) => (
           <button key={t} role="tab" aria-selected={status === t} className={status === t ? 'tab active' : 'tab'} onClick={() => setStatus(t)}>
             {t[0].toUpperCase() + t.slice(1)} {data?.counts?.[t] ? `(${data.counts[t]})` : ''}

@@ -38,8 +38,8 @@ export default function ReviewQueue() {
     <div>
       <h2>Review</h2>
       <div className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'approvals'} className={tab === 'approvals' ? 'tab active' : 'tab'} onClick={() => setParams({})}>Approvals</button>
-        <button role="tab" aria-selected={tab === 'viva'} className={tab === 'viva' ? 'tab active' : 'tab'} onClick={() => setParams({ tab: 'viva' })}>Lotus &amp; viva</button>
+        <button role="tab" data-tour="review-tab-approvals" aria-selected={tab === 'approvals'} className={tab === 'approvals' ? 'tab active' : 'tab'} onClick={() => setParams({})}>Approvals</button>
+        <button role="tab" data-tour="review-tab-viva" aria-selected={tab === 'viva'} className={tab === 'viva' ? 'tab active' : 'tab'} onClick={() => setParams({ tab: 'viva' })}>Lotus &amp; viva</button>
       </div>
       <p className="muted">
         {user.role === 'admin' ? 'All projects.' : 'Projects where you are the mentor.'}{' '}

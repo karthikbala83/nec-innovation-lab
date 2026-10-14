@@ -74,6 +74,10 @@ Details: [docs/STARTER.md](docs/STARTER.md). **Deploying (Netlify + Railway + At
 | Recruiter | `/talent` | Students by stack, stage, department, Lotus petals, viva-verified; **Request intro** goes to the placement cell |
 | Placement cell (admin) | `/admin/people`, `/admin/intros` | Invite recruiters (one-time set-password link); forward / decline intro requests |
 
+## App tour
+
+First login shows a short guided tour for the user's role (student, faculty, recruiter, admin): it spotlights the real buttons, moves between pages, and on phones opens the menu and docks the card at the bottom. Replay any time with the floating **?** button. Finishing or skipping is saved on the account (`tourVersion`), so it won't repeat on another device. Steps live in `client/src/tour/tourSteps.js` — bump `TOUR_VERSION` to show a changed tour to everyone again.
+
 ## Likes, feedback & project requests
 
 | Who | What |

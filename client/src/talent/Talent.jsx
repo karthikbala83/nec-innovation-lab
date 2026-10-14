@@ -37,7 +37,7 @@ export default function Talent() {
         Every student here signed in with a college email, has code pulled from GitHub by the college, and — where shown —
         answered questions about their own code (Lotus) with a faculty viva. To contact anyone, request an intro through the placement cell.
       </p>
-      <form className="filters" onSubmit={(e) => { e.preventDefault(); set('q', q.trim()); }}>
+      <form className="filters" data-tour="talent-filters" onSubmit={(e) => { e.preventDefault(); set('q', q.trim()); }}>
         <input type="search" placeholder="Name, skill or GitHub" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
         <select value={params.get('stack') || ''} onChange={(e) => set('stack', e.target.value)} aria-label="Stack">
           <option value="">Any stack</option>
@@ -63,7 +63,7 @@ export default function Talent() {
       {data && <p className="muted small">{data.total} student{data.total === 1 ? '' : 's'}</p>}
       {data?.rows.length === 0 && <div className="card empty"><p>No students match. Loosen a filter.</p></div>}
 
-      <div className="card-grid">
+      <div className="card-grid" data-tour="talent-results">
         {data?.rows.map((r) => (
           <div key={r.user._id} className="card talent-card">
             <div className="row-between">

@@ -116,6 +116,13 @@ exports.resetPassword = async (req, res) => {
   res.json({ message: 'Password updated. Please login.' });
 };
 
+// PATCH /api/auth/tour  { version }  (protected) — the app tour was finished or skipped
+exports.tourDone = async (req, res) => {
+  const version = Math.max(0, Math.min(100, Number(req.body.version) || 0));
+  await User.updateOne({ _id: req.user._id }, { $max: { tourVersion: version } });
+  res.json({ tourVersion: Math.max(version, req.user.tourVersion || 0) });
+};
+
 // GET /api/auth/me  (protected)
 exports.me = async (req, res) => {
   res.json({ user: req.user });
