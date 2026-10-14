@@ -16,6 +16,11 @@ import Profile from './profiles/Profile.jsx';
 import People from './admin/People.jsx';
 import LabAdmin from './admin/LabAdmin.jsx';
 import Leaderboards from './leaderboards/Leaderboards.jsx';
+import LotusCheck from './lotus/LotusCheck.jsx';
+import VivaView from './lotus/VivaView.jsx';
+import Talent from './talent/Talent.jsx';
+import MyIntros from './intros/MyIntros.jsx';
+import Intros from './admin/Intros.jsx';
 
 // Route guards — the frontend half of protection.
 // (The API enforces it too. Never trust only the frontend.)
@@ -42,10 +47,12 @@ export default function App() {
           <NavLink to="/leaderboards">Leaderboards</NavLink>
           {user ? (
             <>
-              <NavLink to="/me/projects">My projects</NavLink>
+              {user.role !== 'recruiter' && <NavLink to="/me/projects">My projects</NavLink>}
+              {['recruiter', 'faculty', 'admin'].includes(user.role) && <NavLink to="/talent">Talent</NavLink>}
+              {user.role === 'recruiter' && <NavLink to="/intros">My requests</NavLink>}
               {['faculty', 'admin'].includes(user.role) && <NavLink to="/review">Review</NavLink>}
               {user.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
-              {user.handle && <NavLink to={`/u/${user.handle}`}>Profile</NavLink>}
+              {user.handle && ['student', 'faculty'].includes(user.role) && <NavLink to={`/u/${user.handle}`}>Profile</NavLink>}
               <button className="link-btn" onClick={logout}>Logout</button>
             </>
           ) : (
@@ -72,6 +79,11 @@ export default function App() {
           <Route path="/projects/new" element={<Protected roles={['student', 'admin']}><ProjectWizard /></Protected>} />
           <Route path="/projects/:id/edit" element={<Protected><ProjectWizard /></Protected>} />
           <Route path="/review" element={<Protected roles={['faculty', 'admin']}><ReviewQueue /></Protected>} />
+          <Route path="/review/viva/:projectId" element={<Protected roles={['faculty', 'admin']}><VivaView /></Protected>} />
+          <Route path="/projects/:id/lotus" element={<Protected roles={['student']}><LotusCheck /></Protected>} />
+          <Route path="/talent" element={<Protected roles={['recruiter', 'faculty', 'admin']}><Talent /></Protected>} />
+          <Route path="/intros" element={<Protected><MyIntros /></Protected>} />
+          <Route path="/admin/intros" element={<Protected roles={['admin']}><Intros /></Protected>} />
           <Route path="/admin" element={<Protected roles={['admin']}><Admin /></Protected>} />
           <Route path="/admin/people" element={<Protected roles={['admin']}><People /></Protected>} />
           <Route path="/admin/lab" element={<Protected roles={['admin']}><LabAdmin /></Protected>} />

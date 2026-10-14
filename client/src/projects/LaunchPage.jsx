@@ -11,6 +11,9 @@ import Backers from '../community/Backers.jsx';
 import Comments from '../community/Comments.jsx';
 import Timeline from '../updates/Timeline.jsx';
 import PerformancePanel from '../score/PerformancePanel.jsx';
+import LotusFlower, { LotusLine } from '../lotus/LotusFlower.jsx';
+import RequestIntro from '../intros/RequestIntro.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function LaunchPage() {
   const { slug } = useParams();
@@ -18,6 +21,7 @@ export default function LaunchPage() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [backRefresh, setBackRefresh] = useState(0);
+  const { user } = useAuth();
 
   useEffect(() => {
     setP(null);
@@ -41,6 +45,8 @@ export default function LaunchPage() {
   const yt = youTubeId(p.videoUrl);
   const code = p.code;
   const commitsBy = new Map((code?.memberStats || []).map((s) => [String(s.user), s.commits]));
+  const lotusBy = new Map((p.lotus || []).map((l) => [String(l.user), l]));
+  const myLotus = user && lotusBy.get(String(user.id));
 
   return (
     <article className="launch">
@@ -84,6 +90,7 @@ export default function LaunchPage() {
             {p.publishedAt ? `Launched ${timeAgo(p.publishedAt)}` : 'Not launched yet'} · 👁 {p.counts?.views || 0} views
           </p>
           <BackFollowBar project={p} onCounts={() => setBackRefresh((n) => n + 1)} />
+          {p.status === 'published' && <RequestIntro project={p._id} label="Request intro to this team" />}
         </div>
       </header>
 
@@ -132,7 +139,7 @@ export default function LaunchPage() {
             <ul className="team">
               {p.members.map((m) => m.user && (
                 <li key={m.user._id}>
-                  <Avatar name={m.user.name} />
+                  <LotusFlower petals={lotusBy.get(String(m.user._id))?.petals} size={38} />
                   <div>
                     <PersonLink user={m.user} />
                     {m.user.verified && <span className="verified" title="College-verified student">✔</span>}
@@ -140,6 +147,7 @@ export default function LaunchPage() {
                       {m.role}
                       {commitsBy.has(String(m.user._id)) && ` · ${commitsBy.get(String(m.user._id))} commits`}
                     </div>
+                    <LotusLine lotus={lotusBy.get(String(m.user._id))} />
                   </div>
                 </li>
               ))}
@@ -150,6 +158,12 @@ export default function LaunchPage() {
                 {p.status === 'published' && ' · approved for publishing'}
               </p>
             )}
+            {p.viewer?.isTeam && user?.role === 'student' && p.repo?.importedAt && (
+              <Link className="btn small lotus-cta" to={`/projects/${p._id}/lotus`}>
+                {!myLotus || myLotus.status === 'not_started' ? '🪷 Take your Lotus check' : myLotus.status === 'scored' ? '🪷 See your Lotus results' : '🪷 Continue your Lotus check'}
+              </Link>
+            )}
+            {(p.viewer?.isMentor || p.viewer?.isAdmin) && <Link className="btn ghost small" to={`/review/viva/${p._id}`}>Open viva mode</Link>}
           </section>
 
           {code ? <CodePanel code={code} /> : p.repoUrl && (
@@ -196,7 +210,28 @@ function CodePanel({ code }) {
       {code.unmappedCommits > 0 && <p className="muted small">{code.unmappedCommits} commits by people not on the team list</p>}
 
       {code.secretWarnings?.length > 0 && <SecretWarnings warnings={code.secretWarnings} />}
+      {code.duplicate && <DuplicateNotice dup={code.duplicate} />}
     </section>
+  );
+}
+
+// Mentor/admin only: overlap with other college projects (spec §9). Not proof of copying.
+export function DuplicateNotice({ dup }) {
+  return (
+    <div className={dup.flagged ? 'secret-box' : 'dup-box'} role="note">
+      <strong>{dup.flagged ? '⚠ Possible copy — only mentors and admins see this' : 'Similar projects (mentor view)'}</strong>
+      <ul>
+        {dup.matches.map((m, i) => (
+          <li key={i}>
+            {m.overlap}% of distinctive files identical to{' '}
+            {m.project ? <Link to={`/p/${m.project.slug}`}>{m.project.title}</Link> : 'another project'}
+            {' '}({m.sharedFiles} files{m.otherRepoCreatedAt ? `, their repo created ${new Date(m.otherRepoCreatedAt).toLocaleDateString('en-IN')}` : ''})
+            {m.samplePaths?.length > 0 && <div className="muted small">e.g. {m.samplePaths.slice(0, 3).join(', ')}</div>}
+          </li>
+        ))}
+      </ul>
+      <p className="small">Shared starter templates are already ignored. Ask the team before concluding anything.</p>
+    </div>
   );
 }
 

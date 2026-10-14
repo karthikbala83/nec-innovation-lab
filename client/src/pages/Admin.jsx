@@ -21,7 +21,7 @@ export default function Admin() {
     <div>
       <div className="row-between">
         <h2>Admin Dashboard <span className="live-dot" title="auto-refreshes every 10s" /></h2>
-        <span><Link to="/admin/people">People &amp; roles</Link> · <Link to="/admin/lab">Lab Score &amp; moderation</Link> · <Link to="/review">Approval queue</Link></span>
+        <span><Link to="/admin/people">People &amp; roles</Link> · <Link to="/admin/lab">Lab Score &amp; moderation</Link> · <Link to="/admin/intros">Intro requests</Link> · <Link to="/review">Review</Link></span>
       </div>
 
       <div className="stat-grid">

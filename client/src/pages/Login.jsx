@@ -42,8 +42,8 @@ export default function Login() {
   const submit = async () => {
     setError('');
     try {
-      await login(email, password);
-      nav(location.state?.from || '/me/projects');
+      const u = await login(email, password);
+      nav(location.state?.from || (u.role === 'recruiter' ? '/talent' : '/me/projects'));
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
       shake();                       // feel the failure, not just read it

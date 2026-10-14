@@ -12,6 +12,8 @@ export default function People() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState({ users: [], total: 0 });
   const [error, setError] = useState('');
+  const [invite, setInvite] = useState({ name: '', email: '', company: '' });
+  const [inviteResult, setInviteResult] = useState(null);
 
   const load = () =>
     api.get('/admin/users', { params: { q, role, page, limit: LIMIT } })
@@ -30,9 +32,40 @@ export default function People() {
     }
   };
 
+  const sendInvite = async (e) => {
+    e.preventDefault();
+    setError('');
+    setInviteResult(null);
+    try {
+      const { data: r } = await api.post('/admin/recruiters', invite);
+      setInviteResult({ ...r, email: invite.email });
+      setInvite({ name: '', email: '', company: '' });
+      load();
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
+
   return (
     <div>
       <div className="row-between"><h2>People</h2><Link to="/admin">Dashboard</Link></div>
+      <details className="card">
+        <summary><strong>Invite a recruiter</strong></summary>
+        <p className="muted small">Recruiters can search talent and request intros through the placement cell. They never see student contact details.</p>
+        <form onSubmit={sendInvite} className="grid-2">
+          <input placeholder="Name" value={invite.name} onChange={(e) => setInvite({ ...invite, name: e.target.value })} aria-label="Recruiter name" />
+          <input placeholder="Company" value={invite.company} onChange={(e) => setInvite({ ...invite, company: e.target.value })} aria-label="Company" />
+          <input type="email" placeholder="Work email" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} aria-label="Work email" />
+          <button disabled={!invite.name || !invite.email || !invite.company}>Create account</button>
+        </form>
+        {inviteResult && (
+          <div className="dup-box">
+            <p className="small">Account created for <strong>{inviteResult.email}</strong>. Send them this one-time link to set a password (valid until {new Date(inviteResult.expiresAt).toLocaleDateString('en-IN')}):</p>
+            <code className="copy-link">{inviteResult.setPasswordLink}</code>
+            <button className="ghost small" onClick={() => navigator.clipboard?.writeText(inviteResult.setPasswordLink)}>Copy link</button>
+          </div>
+        )}
+      </details>
       <form className="filters" onSubmit={(e) => { e.preventDefault(); setPage(1); load(); }}>
         <input type="search" placeholder="Name, email or roll no" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search people" />
         <select value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }} aria-label="Role">
@@ -40,6 +73,7 @@ export default function People() {
           <option value="student">Students</option>
           <option value="faculty">Faculty</option>
           <option value="admin">Admins</option>
+          <option value="recruiter">Recruiters</option>
         </select>
         <button>Search</button>
       </form>
@@ -56,11 +90,13 @@ export default function People() {
               </div>
             </div>
             <div className="list-actions">
-              <select value={u.role} onChange={(e) => patch(u, { role: e.target.value })} aria-label={`Role of ${u.name}`}>
-                <option value="student">Student</option>
-                <option value="faculty">Faculty</option>
-                <option value="admin">Admin</option>
-              </select>
+              {u.role === 'recruiter' ? <span className="chip">Recruiter · {u.profile?.company}</span> : (
+                <select value={u.role} onChange={(e) => patch(u, { role: e.target.value })} aria-label={`Role of ${u.name}`}>
+                  <option value="student">Student</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="admin">Admin</option>
+                </select>
+              )}
               <label className="check">
                 <input type="checkbox" checked={!!u.verified} onChange={(e) => patch(u, { verified: e.target.checked })} /> Verified
               </label>

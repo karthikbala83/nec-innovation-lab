@@ -60,6 +60,14 @@ export default function LabAdmin() {
       </section>
 
       <section className="card">
+        <h3>Lotus Blossom</h3>
+        <p className="small">
+          This month: {data.lotus.usage.generated} question sets and {data.lotus.usage.scored} scorings of a {data.lotus.quota} quota each.
+        </p>
+        {data.lotus.mock && <p className="small banner status-in_review">Mock mode: set LOTUS_API_URL and LOTUS_API_KEY on the server for the real Lotus API.</p>}
+      </section>
+
+      <section className="card">
         <h3>Daily checks</h3>
         <p className="muted small">
           Pings live URLs, refreshes repos (with GITHUB_TOKEN) and re-scores everything. Last run:{' '}

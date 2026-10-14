@@ -20,9 +20,9 @@ export default function MyProjects() {
     <div>
       <div className="row-between">
         <h2>My projects</h2>
-        {user.role !== 'faculty' && <Link className="btn" to="/projects/new">+ Launch a project</Link>}
+        {['student', 'admin'].includes(user.role) && <Link className="btn" to="/projects/new">+ Launch a project</Link>}
       </div>
-      {user.handle && <p className="muted">Your public profile: <Link to={`/u/${user.handle}`}>/u/{user.handle}</Link> (has your resume QR)</p>}
+      {user.handle && <p className="muted">Your public profile: <Link to={`/u/${user.handle}`}>/u/{user.handle}</Link> (has your resume QR) · <Link to="/intros">Intro requests from companies</Link></p>}
       {!projects && <Spinner />}
       {projects?.length === 0 && (
         <div className="card empty">

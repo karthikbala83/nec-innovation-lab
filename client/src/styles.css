@@ -249,3 +249,29 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eef1f7; }
 /* ---- uploads ---- */
 .upload { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 12px; }
 .update-img { display: block; max-height: 240px; border-radius: 6px; margin: 6px 0; }
+
+/* ---- P2: Lotus, viva, talent, intros ---- */
+.lotus-flower { flex-shrink: 0; }
+.lotus-line { display: block; color: #6a5208; }
+.lotus-cta { margin: 8px 8px 0 0; }
+.lotus-result { display: flex; gap: 14px; align-items: center; }
+.petal-head { display: flex; justify-content: space-between; width: 100%; gap: 8px; cursor: pointer; color: var(--ink); }
+.question { border-top: 1px solid var(--line); padding: 12px 0 4px; }
+.question textarea { margin-top: 6px; }
+.answer { background: var(--bg); border-radius: 6px; padding: 8px 10px; margin: 6px 0; }
+.override { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.override select { width: auto; margin: 0; }
+.lotus-actions { position: sticky; bottom: 0; background: var(--bg); padding: 10px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.lotus-actions .muted { margin-right: auto; }
+.danger-link { color: var(--bad); cursor: pointer; }
+.dup-box { background: #eef2f8; border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 14px; }
+.dup-box ul, .secret-box ul { margin: 6px 0; padding-left: 18px; }
+.talent-card { display: flex; flex-direction: column; gap: 4px; }
+.talent-head { display: flex; gap: 10px; align-items: center; }
+.talent-projects { padding-left: 18px; font-size: 14px; margin: 4px 0 8px; }
+.request-intro { margin-top: 6px; width: 100%; }
+.profile-lotus { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.copy-link { display: block; margin: 6px 0; padding: 6px; }
+.intro-new { background: #fff1c9; } .intro-forwarded { background: #dcf3e3; } .intro-declined, .intro-closed { background: #e7e7e7; }
+details.card summary { cursor: pointer; }
+.chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }

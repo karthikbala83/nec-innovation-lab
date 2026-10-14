@@ -5,6 +5,8 @@ import QRCode from 'qrcode';
 import api from '../api/axios';
 import ProjectCard from '../feed/ProjectCard.jsx';
 import { Avatar, Spinner, errorText } from '../components/ui.jsx';
+import LotusFlower, { LotusLine } from '../lotus/LotusFlower.jsx';
+import RequestIntro from '../intros/RequestIntro.jsx';
 
 export default function Profile() {
   const { handle } = useParams();
@@ -60,13 +62,21 @@ export default function Profile() {
           </div>
           <p className="muted small">Put this on your resume</p>
         </div>
+        {user.role === 'student' && <RequestIntro student={user._id} />}
       </section>
 
       <h2>{user.role === 'faculty' ? 'Mentored projects' : 'Projects'} ({projects.length})</h2>
       {projects.length === 0 && <p className="muted">No published projects yet.</p>}
       <div className="card-grid">
         {projects.map((p) => (
-          <ProjectCard key={p._id} project={p} extra={p.myRole && <p className="muted small">Role: {p.myRole}</p>} />
+          <ProjectCard key={p._id} project={p} extra={(
+            <>
+              {p.myRole && <p className="muted small">Role: {p.myRole}</p>}
+              {p.myLotus && (
+                <div className="profile-lotus"><LotusFlower petals={p.myLotus.petals} size={34} /><LotusLine lotus={p.myLotus} /></div>
+              )}
+            </>
+          )} />
         ))}
       </div>
       <p className="muted small center">Recruiters: to contact this student, write to the NEC placement cell.</p>

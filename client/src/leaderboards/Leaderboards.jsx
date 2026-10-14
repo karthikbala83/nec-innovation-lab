@@ -12,6 +12,7 @@ const metric = (board, p) => ({
   backed: `👏 ${p.counts?.backers || 0} (${p.counts?.backersCollege || 0} college)`,
   active: `${p.repo?.commitsLast30d || 0} commits / 30 days`,
   uptime: `${p.live?.uptime30d ?? '—'}% up`,
+  lotus: `Lotus ${p.lotus?.teamPercent ?? 0}% · ${p.lotus?.petalsAvg ?? 0}/8 petals · viva ${p.lotus?.vivas ?? 0}`,
 }[board]);
 
 export default function Leaderboards() {
