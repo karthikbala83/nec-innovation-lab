@@ -35,6 +35,7 @@ export default function GoogleButton({ onCredential, text = 'continue_with' }) {
         ux_mode: 'popup',
         auto_select: false,
       });
+      box.current.replaceChildren();   // renderButton appends; never show two buttons
       window.google.accounts.id.renderButton(box.current, {
         theme: 'outline', size: 'large', shape: 'pill', text, logo_alignment: 'left',
         width: Math.min(360, box.current.offsetWidth || 320),
