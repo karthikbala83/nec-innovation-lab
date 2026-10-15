@@ -133,7 +133,7 @@ export default function Signup() {
         <input placeholder="Batch (2023-2027)" value={form.batch} onChange={set('batch')} />
         <input placeholder="Roll number" value={form.rollNo} onChange={set('rollNo')} />
       </div>
-      <input placeholder="GitHub username (links your commits)" value={form.githubUsername} onChange={set('githubUsername')} autoCapitalize="off" />
+      <input placeholder="GitHub username, e.g. arun-kumar (optional)" value={form.githubUsername} onChange={set('githubUsername')} autoCapitalize="off" />
       <input placeholder="Skills (comma separated: react, node)" value={form.skills} onChange={set('skills')} />
       <p className="muted small">Your email and roll number are never shown publicly.</p>
       <button onClick={submit} disabled={!allValid || !form.name || !form.email || code.length !== 6}>Sign up</button>

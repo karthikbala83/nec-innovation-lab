@@ -66,16 +66,18 @@ exports.signup = async (req, res) => {
     }
     const exists = await User.findOne({ email: String(email).toLowerCase().trim() });
     if (exists) return res.status(400).json({ message: 'Email already registered' });
-    if (!(await EmailCode.verify(String(email).toLowerCase().trim(), code))) {
-      return res.status(400).json({ message: 'Enter the 6-digit code we emailed you (it may have expired — request a new one)' });
-    }
 
     const { department, year, batch, rollNo, skills } = profile;
-    const user = await User.create({
+    const user = new User({
       name, email, password,
       githubUsername: githubUsername || undefined,
       profile: { department, year, batch, rollNo, skills },
     });
+    await user.validate();   // check the form before using up the emailed code
+    if (!(await EmailCode.verify(String(email).toLowerCase().trim(), code))) {
+      return res.status(400).json({ message: 'Enter the 6-digit code we emailed you (it may have expired — request a new one)' });
+    }
+    await user.save();
     // auto-login after signup: create session + token
     const session = await Session.create({
       user: user._id,
@@ -85,8 +87,11 @@ exports.signup = async (req, res) => {
     const token = signToken(user._id, session._id);
     res.status(201).json({ token, user: user.toAuthJSON() });
   } catch (err) {
-    // Mongoose validation errors come out here — show them to the student
-    res.status(400).json({ message: err.message });
+    // Mongoose validation errors come out here — show them to the student, one line per field
+    const message = err.name === 'ValidationError'
+      ? Object.values(err.errors).map((e) => e.message).join('. ')
+      : err.message;
+    res.status(400).json({ message });
   }
 };
 

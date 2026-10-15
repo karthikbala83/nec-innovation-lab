@@ -7,6 +7,25 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
+// Forgiving input: students paste profile links or type "2023 – 27"
+const cleanGithubUsername = (v) => {
+  if (v == null) return v;
+  return String(v).trim()
+    .replace(/^(?:https?:\/\/)?(?:www\.)?github\.com\//i, '')
+    .replace(/^@/, '')
+    .split(/[/?#]/)[0] || undefined;
+};
+const cleanBatch = (v) => {
+  if (v == null) return v;
+  const t = String(v).trim();
+  if (!t) return undefined;
+  let m = t.match(/^(\d{4})\s*(?:-|–|—|to|\/)\s*(\d{2}|\d{4})$/i);
+  if (m) return `${m[1]}-${m[2].length === 2 ? m[1].slice(0, 2) + m[2] : m[2]}`;
+  m = t.match(/^(\d{4})$/);   // just the joining year: a 4-year B.E./B.Tech batch
+  if (m) return `${m[1]}-${Number(m[1]) + 4}`;
+  return t;
+};
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: [true, 'Name is required'], trim: true },
@@ -31,8 +50,8 @@ const userSchema = new mongoose.Schema(
     // handle = public profile URL (/u/<handle>). Email is never shown publicly.
     handle: { type: String, unique: true, lowercase: true, trim: true, match: /^[a-z0-9-]{3,40}$/ },
     githubUsername: {
-      type: String, trim: true,
-      match: [/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/, 'Invalid GitHub username'],
+      type: String, trim: true, set: (v) => cleanGithubUsername(v),
+      match: [/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/, 'GitHub username: just the name, e.g. arun-kumar (letters, numbers, dashes)'],
     },
     verified: { type: Boolean, default: false },   // admin checked the roll number
     // Google Workspace sign-in (users.googleSub = Google's stable account id)
@@ -48,7 +67,7 @@ const userSchema = new mongoose.Schema(
       college: { type: String, default: 'Nandha Engineering College' },
       department: { type: String, default: 'CSE' },
       year: { type: Number, min: 1, max: 4, default: 2 },
-      batch: { type: String, trim: true, match: [/^\d{4}-\d{4}$/, 'Batch looks like 2023-2027'] },
+      batch: { type: String, trim: true, set: (v) => cleanBatch(v), match: [/^\d{4}-\d{4}$/, 'Batch: start and end year, e.g. 2023-2027'] },
       rollNo: { type: String, trim: true, uppercase: true, maxlength: 20 },   // never public
       company: { type: String, trim: true, maxlength: 80 },                   // recruiters
       skills: [{ type: String }],              // array inside the document
