@@ -125,7 +125,7 @@ UAT has been seeded (demo users + 4 projects). **Never run `npm run seed` agains
 
 1. Google Cloud console → APIs & Services → Credentials → **OAuth client ID (Web application)**.
 2. **Authorised JavaScript origins:** `https://nec-innovation-lab.saravonix.com`, `https://nec-innovation-lab.netlify.app`, `http://localhost:5173`. (No redirect URIs needed — the button uses a popup.)
-3. OAuth consent screen: *Internal* (only the college Workspace) is simplest.
+3. OAuth consent screen (*Google Auth Platform → Audience*): choose **Internal** only if this Google Cloud project belongs to the **college's own** Workspace (nandhaengg.org). If it was created under another organisation (e.g. saravonix.com), Internal blocks every college account with "Access blocked" — use **External** and set it to **In production** (sign-in only asks for email/profile, so no Google verification is needed). The API still refuses anyone outside `ALLOWED_EMAIL_DOMAIN`.
 4. Put the client ID in Netlify (`VITE_GOOGLE_CLIENT_ID`, then *Clear cache and deploy*) **and** Render (`GOOGLE_CLIENT_ID`).
 5. The API only accepts verified emails on `ALLOWED_EMAIL_DOMAIN` whose Google Workspace domain matches — personal Gmail accounts are refused. First sign-in creates a student account and asks for department, batch and roll number. Admins promote faculty in *Admin → People*.
 
