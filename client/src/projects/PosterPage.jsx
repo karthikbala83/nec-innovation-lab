@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import api from '../api/axios';
-import { Spinner, coverImage, errorText } from '../components/ui.jsx';
+import { Spinner, Thumb, errorText } from '../components/ui.jsx';
 
 const clip = (s = '', n) => { const t = String(s).replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1).replace(/\s+\S*$/, '')}…` : t; };
 
@@ -36,7 +36,6 @@ export default function PosterPage() {
   }
 
   const team = p.members.filter((m) => m.user).map((m) => ({ name: m.user.name, role: m.role }));
-  const cover = coverImage(p);
   const shortUrl = pageUrl.replace(/^https?:\/\//, '');
 
   return (
@@ -65,10 +64,10 @@ export default function PosterPage() {
           <div className="poster-body">
             <h1 className="poster-title">{p.title}</h1>
             <p className="poster-tagline">{p.tagline}</p>
-            {cover && <img className="poster-cover" src={cover} alt="" />}
+            <Thumb project={p} className="poster-cover" />   {/* picture, or the generated cover art */}
             <div className="poster-story">
-              {p.problem && <div><h2>The problem</h2><p>{clip(p.problem, cover ? 260 : 520)}</p></div>}
-              {p.solution && <div><h2>Our solution</h2><p>{clip(p.solution, cover ? 260 : 520)}</p></div>}
+              {p.problem && <div><h2>The problem</h2><p>{clip(p.problem, 260)}</p></div>}
+              {p.solution && <div><h2>Our solution</h2><p>{clip(p.solution, 260)}</p></div>}
             </div>
           </div>
           <footer className="poster-foot">

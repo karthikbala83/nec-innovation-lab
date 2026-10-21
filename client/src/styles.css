@@ -642,10 +642,11 @@ button.lightbox-close { position: absolute; top: 12px; right: 12px; min-height: 
 .poster-body { padding: 4cqw 5cqw 2cqw; flex: 1; display: flex; flex-direction: column; gap: 2cqw; min-height: 0; }
 .poster-title { font-size: 8cqw; line-height: 1.02; margin: 0; overflow-wrap: anywhere; }
 .poster-tagline { font-size: 3.4cqw; font-weight: 700; color: var(--ink-2); margin: 0; }
-.poster-cover { width: 100%; height: 40cqw; flex: none; object-fit: cover; border: .5cqw solid var(--ink); border-radius: 2cqw; }
+.poster-cover { width: 100%; height: 36cqw; flex: none; object-fit: cover; overflow: hidden; border: .5cqw solid var(--ink); border-radius: 2cqw; }
 .poster-story { display: grid; grid-template-columns: 1fr 1fr; gap: 3cqw; font-size: 2.3cqw; line-height: 1.4; flex: 1; min-height: 0; overflow: hidden; }
 .poster-story p { margin: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 14); overflow: hidden; }
-.poster-cover + .poster-story p { --lines: 7; }
+.poster-cover + .poster-story p { --lines: 6; }
+.poster-cover.thumb-gen svg { height: 100%; }
 .poster-story h2 { font-size: 2.8cqw; margin: 0 0 .8cqw; }
 .poster-story h2::before { content: ''; display: inline-block; width: 1.8cqw; height: 1.8cqw; border-radius: .5cqw; margin-right: 1cqw; background: var(--coral); }
 .poster-story div + div h2::before { background: var(--mint); }
