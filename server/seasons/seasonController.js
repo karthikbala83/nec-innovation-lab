@@ -18,7 +18,7 @@ const { sendSoon } = require('../services/mailer');
 const { clientUrl } = require('../controllers/authController');
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
-const CARD = 'title slug tagline thumbnail stage category department members counts labScore.total repo.stack lotus';
+const CARD = 'title slug tagline thumbnail screenshots videoUrl stage category department members counts labScore.total repo.stack lotus';
 
 const bySlug = async (slug) => {
   const season = await Season.findOne({ slug: String(slug).toLowerCase() });

@@ -11,6 +11,8 @@ const { importRepo } = require('./repoImport');
 const { recomputeSoon } = require('../score/labScore');
 const lotusSummary = require('../lotus/lotusSummary');
 const feedbackCtl = require('../feedback/feedbackController');
+const { draftFromRepo } = require('./readmeDraft');
+const { hit } = require('../utils/rateLimit');
 
 const PUBLIC_USER = User.PUBLIC_FIELDS;
 const NEW_DAYS = 14;
@@ -124,7 +126,9 @@ exports.getOne = async (req, res) => {
 
   // Count a view on public pages, not when the team admires its own page
   if (project.status === 'published' && !isTeam) {
-    Project.updateOne({ _id: project._id }, { $inc: { 'counts.views': 1 } }).catch(() => {});
+    // ?src=qr = opened from the printed expo poster / QR card
+    const inc = { 'counts.views': 1, ...(req.query.src === 'qr' && { 'counts.qrScans': 1 }) };
+    Project.updateOne({ _id: project._id }, { $inc: inc }).catch(() => {});
     MetricDaily.addView(project._id).catch(() => {});
   }
 
@@ -253,4 +257,17 @@ const snapshotForTeam = (s) => {
     weeklyCommits: o.weeklyCommits, memberStats: o.memberStats, unmappedCommits: o.unmappedCommits,
     secretWarnings: o.secretWarnings, fetchedAt: o.fetchedAt, durationMs: o.durationMs, apiCalls: o.apiCalls,
   };
+};
+
+// POST /api/projects/readme-draft  { repoUrl } — "Fill from GitHub" in the wizard. Saves nothing.
+exports.readmeDraft = async (req, res) => {
+  if (!hit('readme-draft', String(req.user._id), 30, 3600e3).ok) {
+    return res.status(429).json({ message: 'Too many tries this hour. Fill in the details yourself, or try later.' });
+  }
+  try {
+    res.json(await draftFromRepo(req.body?.repoUrl, Project.parseRepoUrl));
+  } catch (err) {
+    if (err.name !== 'TimeoutError') throw err;
+    res.status(504).json({ message: 'GitHub took too long. Try again in a minute.' });
+  }
 };

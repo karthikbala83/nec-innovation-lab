@@ -14,6 +14,7 @@ const CARD = {
   title: 1, slug: 1, tagline: 1, thumbnail: 1, stage: 1, category: 1, department: 1, year: 1, theme: 1,
   publishedAt: 1, counts: 1, liveUrl: 1, 'repo.stack': 1, 'repo.languages': 1, 'repo.lastCommitAt': 1,
   'members.user': 1, 'members.role': 1, live: 1, 'labScore.total': 1,
+  videoUrl: 1, screenshots: { $slice: ['$screenshots', 1] },   // card cover when there is no thumbnail
 };
 
 const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

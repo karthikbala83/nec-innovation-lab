@@ -5,6 +5,7 @@ const { protect, optionalAuth, requireRole } = require('../middleware/auth');
 
 router.post('/', protect, requireRole('student', 'admin'), c.create);
 router.get('/mine', protect, c.mine);
+router.post('/readme-draft', protect, requireRole('student', 'admin'), c.readmeDraft);   // "Fill from GitHub"
 router.get('/:idOrSlug', optionalAuth, c.getOne);             // public once published
 router.put('/:id', protect, c.update);
 router.post('/:id/submit', protect, c.submit);

@@ -56,6 +56,15 @@ const createClient = ({ timeoutMs = 20000, token } = {}) => {
     languages: (o, r) => request(`/repos/${o}/${r}/languages`),
     commits: (o, r, sha, page) => request(`/repos/${o}/${r}/commits?sha=${sha}&per_page=100&page=${page}`),
     commit: (o, r, sha) => request(`/repos/${o}/${r}/commits/${sha}`),
+    // README as raw markdown (null when the repo has none)
+    readme: async (o, r) => {
+      try {
+        return await (await request(`/repos/${o}/${r}/readme`, { accept: 'application/vnd.github.raw', raw: true })).text();
+      } catch (err) {
+        if (err.status === 404) return null;
+        throw err;
+      }
+    },
     // Whole repo in ONE request (instead of one call per file). Returns the fetch Response.
     tarball: (o, r, sha) => request(`/repos/${o}/${r}/tarball/${sha}`, { raw: true, timeout: 2 * timeoutMs }),
   };

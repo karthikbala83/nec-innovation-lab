@@ -9,6 +9,7 @@ import Notes from './pages/Notes.jsx';
 import Admin from './pages/Admin.jsx';
 import Feed from './feed/Feed.jsx';
 import LaunchPage from './projects/LaunchPage.jsx';
+import PosterPage from './projects/PosterPage.jsx';
 import ProjectWizard from './projects/ProjectWizard.jsx';
 import MyProjects from './projects/MyProjects.jsx';
 import ReviewQueue from './review/ReviewQueue.jsx';
@@ -120,6 +121,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Feed />} />
           <Route path="/p/:slug" element={<LaunchPage />} />
+          <Route path="/p/:slug/poster" element={<PosterPage />} />
           <Route path="/u/:handle" element={<Profile />} />
           <Route path="/leaderboards" element={<Leaderboards />} />
           <Route path="/seasons" element={<Seasons />} />

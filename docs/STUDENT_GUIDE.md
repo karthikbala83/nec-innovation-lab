@@ -14,13 +14,15 @@ Your project gets a launch page on the college's portal: your story, demo, team 
 A short tour starts after your first sign-in. Replay it any time with the **?** button.
 
 ## 2. Launch your project (about 10 minutes)
-Tap **＋ Launch** and go through the six steps — it saves at every step:
+Tap **＋ Launch** and go through the six steps — it saves at every step.
+
+**Shortcut:** have a public GitHub repo? Paste it in the purple **Fill from GitHub** box on the first step. The portal reads your repo's description and README and fills in the title, tagline, story, demo video and screenshots. Then just check each step. (A good README = a 3-minute launch.)
 
 | Step | What to have ready |
 |---|---|
 | Basics | Title, a one-line tagline (≤ 140 characters), department, stage |
 | Story | The problem, your solution, impact so far (numbers beat adjectives) |
-| Proof & media | GitHub repo link, live demo link, YouTube demo (unlisted is fine), screenshots — upload them or paste links |
+| Proof & media | **Demo video first:** YouTube (unlisted is fine) or Google Drive (*Share → General access: Anyone with the link*) — it plays at the top of your page. Then screenshots (hardware: photos of your build), live demo link, GitHub repo. Hardware projects don't need code. |
 | Team | Add teammates by their **college email** (they must have signed in once), their roles, and choose your **faculty mentor** |
 | Code | **Import from GitHub** — the portal reads your stack, who committed what, and warns you privately if a password/key was committed |
 | Submit | Your mentor reviews it. Nothing is public until they approve |
@@ -46,7 +48,9 @@ If your repo is public, skip this. If it is **private**, the portal needs a toke
 - **Lotus check** — once your repo is imported, tap **Take your Lotus check** on your project page: questions about *your own* code. A short viva with your mentor then earns the **✔ Verified** badge recruiters look for.
 - **Updates** — post progress on your project page; recent updates raise your Lab Score.
 - **Seasons** — enter your project into the semester Demo Day or a hackathon season.
+- **Project expo / demo day** — on your project page tap **🖨 Expo poster & QR**: print an A4 stall poster or 4 QR table cards. Every scan is counted on your page.
 - **Profile + QR** — **Profile** → *Download QR* for your resume.
+- **Link previews** — when you paste your project link in WhatsApp or LinkedIn it shows your title, tagline and picture. Add a cover image or screenshots so it looks good.
 
 ## 5. Rules
 - Be kind and specific in comments and feedback. Abusive, spammy or off-topic messages are blocked or held for review.

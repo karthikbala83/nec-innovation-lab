@@ -7,10 +7,11 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext.jsx';
-import { StatusBadge, Spinner, Avatar, errorText, timeAgo } from '../components/ui.jsx';
+import { StatusBadge, Spinner, Avatar, errorText, timeAgo, videoEmbed } from '../components/ui.jsx';
 import { SecretWarnings } from './LaunchPage.jsx';
 import ImageUpload from '../components/ImageUpload.jsx';
 import GithubTokenHelp from './GithubTokenHelp.jsx';
+import ReadmeFill from './ReadmeFill.jsx';
 
 const STEPS = ['Basics', 'Story', 'Proof & media', 'Team', 'Code', 'Submit'];
 const DEPARTMENTS = ['CSE', 'IT', 'AI&DS', 'ECE', 'EEE', 'MECH', 'CIVIL', 'BME', 'Other'];
@@ -51,6 +52,7 @@ export default function ProjectWizard() {
   const [loading, setLoading] = useState(!!id);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [prefilled, setPrefilled] = useState([]);   // later-step fields "Fill from GitHub" set before the draft exists
 
   useEffect(() => {
     if (!id) return;
@@ -78,7 +80,9 @@ export default function ProjectWizard() {
     setSaving(true);
     try {
       if (!id) {
-        const { data } = await api.post('/projects', payloadFor(1));
+        // Step 1 creates the draft; also keep what "Fill from GitHub" put in the later steps
+        const extra = Object.fromEntries(prefilled.filter((k) => !STEP_FIELDS[0].includes(k)).map((k) => [k, form[k]]));
+        const { data } = await api.post('/projects', { ...extra, ...payloadFor(1) });
         nav(`/projects/${data._id}/edit?step=2`, { replace: true });
         return;
       }
@@ -124,6 +128,7 @@ export default function ProjectWizard() {
       {error && <p className="error" role="alert">{error}</p>}
 
       <div className="card">
+        {step === 1 && !id && <ReadmeFill form={form} setForm={setForm} onFilled={(keys) => setPrefilled((k) => [...new Set([...k, ...keys])])} />}
         {step === 1 && <Basics form={form} set={set} />}
         {step === 2 && <Story form={form} set={set} setForm={setForm} />}
         {step === 3 && <Proof form={form} setForm={setForm} set={set} projectId={id} />}
@@ -202,6 +207,7 @@ function Story({ form, set, setForm }) {
   const setAsk = (i, v) => { const next = [...asks]; next[i] = v; setForm({ ...form, lookingFor: next }); };
   return (
     <>
+      {form.repoUrl && (!form.problem.trim() || !form.solution.trim()) && <ReadmeFill compact form={form} setForm={setForm} />}
       <Field label="The problem *" counter={<Counter value={form.problem} max={1500} />} hint="Who has this problem, and what does it cost them today?">
         <textarea rows={5} value={form.problem} onChange={set('problem')} />
       </Field>
@@ -221,33 +227,70 @@ function Story({ form, set, setForm }) {
   );
 }
 
+// Demo first: video, then pictures, then links. Hardware teams get photo / circuit wording and no code needed.
 function Proof({ form, setForm, set, projectId }) {
   const shots = form.screenshots.join('\n');
+  const hw = form.category === 'hardware';
+  const pics = hw ? 'photos' : 'screenshots';
+  const video = form.videoUrl.trim();
+  const videoNote = video && !videoEmbed(video)
+    ? 'This link will show as a button. YouTube and Google Drive links play right on your page.'
+    : null;
   return (
     <>
-      <Field label="GitHub repo (public)" hint="https://github.com/owner/repo — you'll import it in step 5">
-        <input value={form.repoUrl} onChange={set('repoUrl')} placeholder="https://github.com/your-team/your-repo" inputMode="url" />
+      <p className="hint proof-intro">
+        {hw
+          ? 'Show it working: a 1–2 minute video of the build running and a few clear photos convince more than any text. No code needed.'
+          : 'Show it working: a 1–2 minute demo video and a few screenshots are the first thing visitors see.'}
+      </p>
+      <Field label="Demo video" hint="YouTube (unlisted is fine) or Google Drive (Share → General access: Anyone with the link). It plays at the top of your page.">
+        <input value={form.videoUrl} onChange={set('videoUrl')} placeholder="https://youtu.be/…  or  https://drive.google.com/file/d/…" inputMode="url" />
       </Field>
-      <Field label="Live demo URL"><input value={form.liveUrl} onChange={set('liveUrl')} placeholder="https://…" inputMode="url" /></Field>
-      <Field label="Demo video" hint="YouTube (unlisted is fine) — it plays on your page">
-        <input value={form.videoUrl} onChange={set('videoUrl')} placeholder="https://youtu.be/…" inputMode="url" />
-      </Field>
-      <Field label="Thumbnail image" hint="Upload, or paste a link. Without one we generate a cover from your title. 16:9 looks best.">
-        <input value={form.thumbnail} onChange={set('thumbnail')} inputMode="url" placeholder="https://…" />
-      </Field>
-      <ImageUpload projectId={projectId} kind="thumbnail" label="Upload thumbnail"
-        onUploaded={(url) => setForm((f) => ({ ...f, thumbnail: url }))} />
-      <Field label="Architecture diagram"><input value={form.architectureImage} onChange={set('architectureImage')} inputMode="url" placeholder="https://…" /></Field>
-      <ImageUpload projectId={projectId} kind="architecture" label="Upload diagram"
-        onUploaded={(url) => setForm((f) => ({ ...f, architectureImage: url }))} />
+      {videoNote && <p className="hint warn-line">{videoNote}</p>}
+
+      <h3>{hw ? 'Photos of your build' : 'Screenshots'} ({form.screenshots.length}/8)</h3>
+      {form.screenshots.length > 0 && (
+        <ul className="shot-edit">
+          {form.screenshots.map((s, i) => (
+            <li key={s}>
+              <img src={s} alt="" loading="lazy" />
+              <button type="button" className="ghost small" aria-label={`Remove ${pics} ${i + 1}`}
+                onClick={() => setForm((f) => ({ ...f, screenshots: f.screenshots.filter((x) => x !== s) }))}>✕</button>
+            </li>
+          ))}
+        </ul>
+      )}
       {form.screenshots.length < 8 && (
-        <ImageUpload projectId={projectId} kind="screenshot" label="Upload screenshot"
+        <ImageUpload projectId={projectId} kind="screenshot" label={hw ? 'Upload photo' : 'Upload screenshot'}
           onUploaded={(url) => setForm((f) => ({ ...f, screenshots: [...f.screenshots, url].slice(0, 8) }))} />
       )}
-      <Field label="Screenshot links" hint="One per line, up to 8. Uploaded screenshots appear here.">
-        <textarea rows={3} value={shots}
-          onChange={(e) => setForm({ ...form, screenshots: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 8) })} />
+      <details className="more-links">
+        <summary>Paste {pics} links instead</summary>
+        <Field label={`${hw ? 'Photo' : 'Screenshot'} links`} hint="One per line, up to 8.">
+          <textarea rows={3} value={shots}
+            onChange={(e) => setForm({ ...form, screenshots: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, 8) })} />
+        </Field>
+      </details>
+
+      <h3>Links</h3>
+      <Field label="Live demo URL" hint={hw ? 'Optional — e.g. a dashboard that shows your sensor data' : 'Where people can try it'}>
+        <input value={form.liveUrl} onChange={set('liveUrl')} placeholder="https://…" inputMode="url" />
       </Field>
+      <Field label={hw ? 'GitHub repo (optional)' : 'GitHub repo'} hint="https://github.com/owner/repo — you'll import it in step 5">
+        <input value={form.repoUrl} onChange={set('repoUrl')} placeholder="https://github.com/your-team/your-repo" inputMode="url" />
+      </Field>
+
+      <h3>Cover &amp; diagram</h3>
+      <Field label="Cover image" hint={`Optional. Without one we use your first ${hw ? 'photo' : 'screenshot'} or the video still. 16:9 looks best.`}>
+        <input value={form.thumbnail} onChange={set('thumbnail')} inputMode="url" placeholder="https://…" />
+      </Field>
+      <ImageUpload projectId={projectId} kind="thumbnail" label="Upload cover"
+        onUploaded={(url) => setForm((f) => ({ ...f, thumbnail: url }))} />
+      <Field label={hw ? 'Circuit / block diagram' : 'Architecture diagram'}>
+        <input value={form.architectureImage} onChange={set('architectureImage')} inputMode="url" placeholder="https://…" />
+      </Field>
+      <ImageUpload projectId={projectId} kind="architecture" label="Upload diagram"
+        onUploaded={(url) => setForm((f) => ({ ...f, architectureImage: url }))} />
     </>
   );
 }
@@ -426,7 +469,8 @@ function SubmitStep({ project, onChange }) {
     ['Tagline', !!project.tagline],
     ['Problem', !!project.problem],
     ['Solution', !!project.solution],
-    ['Repo, live or video link', !!(project.repoUrl || project.liveUrl || project.videoUrl)],
+    ['Demo video, photos, repo or live link', !!(project.repoUrl || project.liveUrl || project.videoUrl || project.screenshots?.length)],
+    ['Demo video (recommended)', !!project.videoUrl],
     ['Faculty mentor', !!project.mentor],
     ['Repo imported (recommended)', !project.repoUrl || !!project.repo?.importedAt],
   ];

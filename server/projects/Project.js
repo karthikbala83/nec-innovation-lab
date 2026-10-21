@@ -72,7 +72,7 @@ const projectSchema = new mongoose.Schema(
       type: String, trim: true,
       validate: { validator: (v) => !v || GITHUB_REPO.test(v), message: 'Repo must be https://github.com/<owner>/<repo>' },
     },
-    videoUrl: { type: String, trim: true, validate: httpUrl },   // YouTube unlisted in v1
+    videoUrl: { type: String, trim: true, validate: httpUrl },   // YouTube (unlisted ok) or a Google Drive file shared with "anyone with the link"
     screenshots: { type: [{ type: String, trim: true, validate: httpUrl }], validate: maxItems(8) },
 
     // ---- Team ----
@@ -121,6 +121,7 @@ const projectSchema = new mongoose.Schema(
       followers: { type: Number, default: 0 },
       likes: { type: Number, default: 0 },          // anyone, incl. visitors without an account
       views: { type: Number, default: 0 },
+      qrScans: { type: Number, default: 0 },          // opened from the printed expo poster / QR card
       comments: { type: Number, default: 0 },
       updates: { type: Number, default: 0 },
     },
@@ -184,7 +185,8 @@ projectSchema.methods.missingForReview = function () {
   if (!this.tagline) missing.push('tagline');
   if (!this.problem) missing.push('problem');
   if (!this.solution) missing.push('solution');
-  if (!this.repoUrl && !this.liveUrl && !this.videoUrl) missing.push('repo, live or video link');
+  // Hardware / research teams can prove it with a demo video or photos instead of code
+  if (!this.repoUrl && !this.liveUrl && !this.videoUrl && !this.screenshots?.length) missing.push('a demo video, photos, repo or live link');
   if (!this.mentor) missing.push('mentor');
   return missing;
 };

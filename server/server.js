@@ -61,6 +61,7 @@ app.use('/api/intros', protect, require('./intros/introRoutes'));            // 
 
 // ---- P3: college ops ----
 app.use('/api/seasons', require('./seasons/seasonRoutes'));                 // seasons & demo day
+app.use('/api/share', require('./share/shareRoutes'));                     // link-preview HTML for crawlers
 
 // ---- Likes, feedback & project requests (open to visitors with the link) ----
 app.use('/api', require('./feedback/feedbackRoutes'));

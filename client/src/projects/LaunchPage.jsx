@@ -1,11 +1,12 @@
 // Public launch page: /p/:slug  (team / mentor / admin can also preview drafts)
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import {
-  StageBadge, StatusBadge, Avatar, Thumb, PersonLink, Sparkline, Spinner,
-  timeAgo, youTubeId, errorText,
+  StageBadge, StatusBadge, PersonLink, Sparkline, Spinner,
+  timeAgo, videoEmbed, errorText,
 } from '../components/ui.jsx';
+import MediaGallery from './MediaGallery.jsx';
 import BackFollowBar from '../community/BackFollowBar.jsx';
 import EngageBar from '../feedback/EngageBar.jsx';
 import Backers from '../community/Backers.jsx';
@@ -23,11 +24,16 @@ export default function LaunchPage() {
   const [copied, setCopied] = useState(false);
   const [backRefresh, setBackRefresh] = useState(0);
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const nav = useNavigate();
 
   useEffect(() => {
     setP(null);
-    api.get(`/projects/${slug}`).then((r) => setP(r.data)).catch((err) => setError(errorText(err, 'Project not found')));
-  }, [slug]);
+    // ?src=qr: opened from the printed expo poster. Count it once, then drop it so a re-share doesn't count again.
+    const src = params.get('src') === 'qr' ? 'qr' : undefined;
+    api.get(`/projects/${slug}`, { params: { src } }).then((r) => setP(r.data)).catch((err) => setError(errorText(err, 'Project not found')));
+    if (src) nav(`/p/${slug}`, { replace: true });
+  }, [slug]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <div className="card empty"><p>{error}</p><Link to="/">Back to all projects</Link></div>;
   if (!p) return <Spinner />;
@@ -43,7 +49,8 @@ export default function LaunchPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const yt = youTubeId(p.videoUrl);
+  const playable = !!videoEmbed(p.videoUrl);
+  const isHardware = p.category === 'hardware';
   const code = p.code;
   const commitsBy = new Map((code?.memberStats || []).map((s) => [String(s.user), s.commits]));
   const lotusBy = new Map((p.lotus || []).map((l) => [String(l.user), l]));
@@ -62,14 +69,7 @@ export default function LaunchPage() {
       )}
 
       <header className="launch-hero">
-        {yt ? (
-          <div className="video">
-            <iframe src={`https://www.youtube-nocookie.com/embed/${yt}`} title={`${p.title} demo video`}
-              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowFullScreen loading="lazy" />
-          </div>
-        ) : (
-          <Thumb project={p} className="hero-thumb" />
-        )}
+        <MediaGallery project={p} />
         <div className="launch-head">
           <h1>{p.title}</h1>
           <p className="tagline big">{p.tagline}</p>
@@ -83,12 +83,16 @@ export default function LaunchPage() {
           <div className="actions">
             {p.liveUrl && <a className="btn" href={p.liveUrl} target="_blank" rel="noreferrer">Live demo ↗</a>}
             {p.repoUrl && <a className="btn ghost" href={p.repoUrl} target="_blank" rel="noreferrer">Code on GitHub ↗</a>}
-            {p.videoUrl && !yt && <a className="btn ghost" href={p.videoUrl} target="_blank" rel="noreferrer">Demo video ↗</a>}
+            {p.videoUrl && !playable && <a className="btn ghost" href={p.videoUrl} target="_blank" rel="noreferrer">Demo video ↗</a>}
             <button className="ghost" onClick={share}>{copied ? 'Link copied' : 'Share'}</button>
             {p.viewer?.canEdit && <Link className="btn ghost" to={`/projects/${p._id}/edit`}>Edit</Link>}
+            {p.status === 'published' && (p.viewer?.isTeam || p.viewer?.isMentor || p.viewer?.isAdmin) && (
+              <Link className="btn ghost" to={`/p/${p.slug}/poster`}>🖨 Expo poster & QR</Link>
+            )}
           </div>
           <p className="muted">
             {p.publishedAt ? `Launched ${timeAgo(p.publishedAt)}` : 'Not launched yet'} · 👁 {p.counts?.views || 0} views
+            {p.counts?.qrScans > 0 && ` · ▣ ${p.counts.qrScans} QR scans`}
           </p>
           <BackFollowBar project={p} onCounts={() => setBackRefresh((n) => n + 1)} />
           <EngageBar project={p} />
@@ -120,14 +124,9 @@ export default function LaunchPage() {
           {p.solution && <section className="card"><h2>Our solution</h2><p className="prose">{p.solution}</p></section>}
           {p.impact && <section className="card"><h2>Impact so far</h2><p className="prose">{p.impact}</p></section>}
           {p.architectureImage && (
-            <section className="card"><h2>Architecture</h2><img className="full-img" src={p.architectureImage} alt="Architecture diagram" /></section>
-          )}
-          {p.screenshots?.length > 0 && (
             <section className="card">
-              <h2>Screenshots</h2>
-              <div className="shots">
-                {p.screenshots.map((s) => <a key={s} href={s} target="_blank" rel="noreferrer"><img src={s} alt="" loading="lazy" /></a>)}
-              </div>
+              <h2>{isHardware ? 'Circuit / block diagram' : 'Architecture'}</h2>
+              <img className="full-img" src={p.architectureImage} alt={isHardware ? 'Circuit or block diagram' : 'Architecture diagram'} />
             </section>
           )}
           <Timeline project={p} />
@@ -174,7 +173,29 @@ export default function LaunchPage() {
           {p.status === 'published' && <Backers projectId={p._id} refreshKey={backRefresh} />}
         </aside>
       </div>
+      <DemoBar p={p} playable={playable} onShare={share} copied={copied} />
     </article>
+  );
+}
+
+// Phones: the demo stays one thumb-tap away while reading the story
+function DemoBar({ p, playable, onShare, copied }) {
+  const show = !!(p.liveUrl || p.videoUrl);
+  useEffect(() => {
+    if (!show) return undefined;
+    document.body.classList.add('has-demo-bar');
+    return () => document.body.classList.remove('has-demo-bar');
+  }, [show]);
+  if (!show) return null;
+  const watch = () => document.getElementById('demo')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return (
+    <div className="demo-bar" role="region" aria-label="Demo">
+      {p.videoUrl && (playable
+        ? <button type="button" className="ghost small" onClick={watch}>▶ Watch</button>
+        : <a className="btn ghost small" href={p.videoUrl} target="_blank" rel="noreferrer">▶ Watch</a>)}
+      {p.liveUrl && <a className="btn small" href={p.liveUrl} target="_blank" rel="noreferrer">Try live demo ↗</a>}
+      <button type="button" className="ghost small" onClick={onShare}>{copied ? 'Copied' : 'Share'}</button>
+    </div>
   );
 }
 

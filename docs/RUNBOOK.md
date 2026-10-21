@@ -65,6 +65,7 @@ Routes are thin; controllers do the work; models hold the rules. Read `CLAUDE.md
 | GitHub import: "rate limit reached" | No / expired `GITHUB_TOKEN` | Create a fine-grained read-only token (public repos), set it, redeploy. |
 | Lotus: "quota reached" | Monthly quota used | Raise `LOTUS_MONTHLY_QUOTA` after talking to Saravonix, or wait for next month. |
 | Lotus pages error on UAT | No Lotus credentials in production | Set `LOTUS_API_URL` + `LOTUS_API_KEY`, or `LOTUS_MOCK=true` on UAT only. |
+| WhatsApp/LinkedIn shows no picture or title for a project link | Edge function can't reach the API, or the API was asleep | `curl -A WhatsApp https://<site>/p/<slug>` must show `og:title`. Netlify: `VITE_API_URL` must be available to Functions. WhatsApp caches previews — test with a new link (add `?v=2`). |
 | Image upload fails | S3 CORS / IAM | Bucket CORS must list the site URL; IAM user needs `s3:PutObject` on `students-projects/*`. |
 | A message or comment is abusive | Got past the word lists | Hide it (Admin → moderation). Add the words to `server/moderation/wordlists.js` via a PR. |
 | Someone reports a copied project | — | Mentor sees the duplicate-check notice on the review queue / project page. Talk to the team first. |

@@ -7,7 +7,7 @@ const User = require('../models/User');
 const Project = require('../projects/Project');
 const lotusSummary = require('../lotus/lotusSummary');
 
-const CARD_FIELDS = 'title slug tagline thumbnail stage category department year publishedAt counts repo.stack liveUrl members live labScore.total';
+const CARD_FIELDS = 'title slug tagline thumbnail screenshots videoUrl stage category department year publishedAt counts repo.stack liveUrl members live labScore.total';
 
 // GET /api/profiles/:handle  — public, no login
 exports.profile = async (req, res) => {

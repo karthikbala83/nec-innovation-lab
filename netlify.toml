@@ -1,4 +1,6 @@
-# Netlify: builds the React client from client/. API lives on Railway.
+# Netlify: builds the React client from client/. API lives on Render.
+# Link previews (WhatsApp/LinkedIn…): client/netlify/edge-functions/link-preview.js reads
+# VITE_API_URL (or API_URL) — make sure that variable is available to Functions, not only Builds.
 [build]
   base = "client"
   command = "npm ci && npm run build"

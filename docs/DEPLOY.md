@@ -117,6 +117,8 @@ UAT has been seeded (demo users + 4 projects). **Never run `npm run seed` agains
 
 `VITE_*` values are baked in at build time — after changing them, trigger *Deploys → Trigger deploy → Clear cache and deploy*.
 
+**Link previews (WhatsApp, LinkedIn…):** the edge function `client/netlify/edge-functions/link-preview.js` deploys with the site. It reads `VITE_API_URL` at request time, so in *Environment variables* make sure that variable's **scopes include Functions** (the default "All scopes" is fine). Check: `curl -A WhatsApp https://<site>/p/<slug>` should return HTML with `og:title`. The Docker/nginx setup does the same in `client/nginx.conf`.
+
 ---
 
 ## 4b. Google sign-in (college Google Workspace)

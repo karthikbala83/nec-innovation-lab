@@ -74,7 +74,8 @@ function FlatCover({ title, varied }) {
 
 // Thumbnail, or a generated flat cover when there is none
 export function Thumb({ project, className = 'thumb', varied = false }) {
-  if (project.thumbnail) return <img className={className} src={project.thumbnail} alt="" loading="lazy" />;
+  const img = coverImage(project);
+  if (img) return <img className={className} src={img} alt="" loading="lazy" />;
   return (
     <div className={`${className} thumb-gen`} style={className === 'thumb-sm' ? undefined : { aspectRatio: 'auto' }}>
       <FlatCover title={project.title || '?'} varied={varied} />
@@ -112,9 +113,27 @@ export function Sparkline({ values = [], width = 160, height = 36 }) {
 }
 
 // YouTube links become an embed; anything else stays a link
+// Demo videos: YouTube (incl. Shorts) or a Google Drive file shared "anyone with the link". Same rules as server/utils/media.js
 export const youTubeId = (url = '') => {
-  const m = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/.exec(url);
+  const m = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/.exec(url || '');
   return m ? m[1] : null;
+};
+export const driveId = (url = '') => {
+  const m = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)([\w-]{20,})/.exec(url || '');
+  return m ? m[1] : null;
+};
+export const videoEmbed = (url) => {
+  const yt = youTubeId(url);
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt}`;
+  const d = driveId(url);
+  return d ? `https://drive.google.com/file/d/${d}/preview` : null;
+};
+// Best picture for a card: thumbnail, else first screenshot, else the YouTube still
+export const coverImage = (p) => {
+  if (p.thumbnail) return p.thumbnail;
+  if (p.screenshots?.length) return p.screenshots[0];
+  const yt = youTubeId(p.videoUrl);
+  return yt ? `https://i.ytimg.com/vi/${yt}/hqdefault.jpg` : null;
 };
 
 export function Spinner({ label = 'Loading…' }) {
