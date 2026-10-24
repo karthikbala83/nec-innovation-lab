@@ -39,3 +39,17 @@ regexTarget = "line"
 regexes = [
   '''(?i)(example|sample|placeholder|dummy|change[-_]?me|your[-_][a-z]|<[a-z0-9_-]+>|xxx+|redacted|removed|localhost|127\.0\.0\.1|\byour\b|\.example\.com)''',
 ]
+
+[[allowlists]]
+description = "Non-secret identifiers that trip generic-api-key (ORM/DTO property names)"
+regexTarget = "match"
+regexes = [
+  '''(?i)receipt[a-z0-9]*key''',
+]
+
+[[allowlists]]
+description = "Public CI status-badge tokens (read-only, safe to expose)"
+regexTarget = "line"
+regexes = [
+  '''(?i)(shields\.io|circleci\.com|app\.circleci\.com|github\.com/.+/workflows/.+/badge)''',
+]
