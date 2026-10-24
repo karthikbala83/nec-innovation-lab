@@ -1,0 +1,41 @@
+# Tuned gitleaks config for karthikbala83 repos.
+# Keeps all default secret rules, but allowlists known false-positive sources:
+# build output, example/template env files, test fixtures, and documentation
+# example values. Real secrets in real source/env files still fail the scan.
+title = "secret-scan allowlist"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Build output, dependencies, lockfiles (generated, not source secrets)"
+paths = [
+  '''(^|/)\.next/''',
+  '''(^|/)(dist|build|out|coverage|\.turbo|\.vercel|\.output|\.svelte-kit)/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$''',
+]
+
+[[allowlists]]
+description = "Example / template env files (placeholders only, never real secrets)"
+paths = [
+  '''(^|/)\.env[^/]*\.(example|sample|template|dist|docker\.example)$''',
+  '''(^|/)env\.(example|sample|template)$''',
+]
+
+[[allowlists]]
+description = "Test fixtures / spec files that intentionally contain dummy secrets"
+paths = [
+  '''(^|/)(tests?|__tests__|__mocks__|fixtures|e2e)/''',
+  '''.*\.(test|spec)\.[tj]sx?$''',
+  '''(^|/)test_[^/]*\.(py|js|ts)$''',
+]
+
+[[allowlists]]
+description = "Documentation example values (placeholders, localhost, sample tokens)"
+condition = "AND"
+paths = ['''.*\.(md|mdx|markdown|txt|rst|adoc)$''']
+regexTarget = "line"
+regexes = [
+  '''(?i)(example|sample|placeholder|dummy|change[-_]?me|your[-_][a-z]|<[a-z0-9_-]+>|xxx+|redacted|removed|localhost|127\.0\.0\.1|\byour\b|\.example\.com)''',
+]
